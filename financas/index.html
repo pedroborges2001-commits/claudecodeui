@@ -468,6 +468,8 @@ function expandDiario(arr){
   });
   return out;
 }
+const ativoEm = (f, ym) => f.ativa !== false && (!f.desde || ym >= f.desde) && (!f.ate || ym <= f.ate);
+const recValorMes = (md, r) => (md && md.recValor && isSet(md.recValor[r.id])) ? +md.recValor[r.id] : (+r.valor || 0);
 function fixaLancSum(md, id){ const l = md && md.fixasLanc && md.fixasLanc[id]; return l && l.length ? sum(l, x => x.valor) : null; }
 function fixaPaga(md, f){ if (md && md.fixasPagas && md.fixasPagas[f.id]) return true; const s = fixaLancSum(md, f.id); return s != null && s >= 0.95 * (+f.valor || 0); }
 function compute(opts){
@@ -488,8 +490,10 @@ function compute(opts){
   if (opts.extraOverride) extras = extras.map(e => e.id === opts.extraOverride.id ? Object.assign({}, e, opts.extraOverride, {valores:null}) : e);
   const diario = pure ? [] : expandDiario(list('diario')).filter(d => d.data && d.data >= ymd(start, 1) && d.data <= ymd(end, 31));
   const r = (+cfg.rendimento || 0) / 100;
-  const fixTotal = sum(fixas, f => f.valor);
-  const recTotal = sum(recs, f => f.valor);
+  const baseYm = tYm < start ? start : tYm > end ? end : tYm;
+  const fixTotal = sum(fixas.filter(f => ativoEm(f, baseYm)), f => f.valor);
+  const recTotal = sum(recs.filter(f => ativoEm(f, baseYm)), f => f.valor);
+  const gOf = ym => { const md = (!pure && S.data.meses[ym]) || {}; return isSet(md.gastoDia) ? +md.gastoDia : g; };
   const diasMes = +cfg.diasMes || 30.4;
   const custoVida = fixTotal + recTotal + g * diasMes;
   const meta = (+cfg.metaMeses || 0) * custoVida;
@@ -511,11 +515,11 @@ function compute(opts){
     const dM = diario.filter(x => ymOf(x.data) === ym);
     const livreReal = sum(dM.filter(x => !x.extra), x => x.valor);
     const imprev = sum(dM.filter(x => x.extra), x => x.valor);
-    const dias = daysIn(ym), orc = g * dias;
+    const gm = gOf(ym), dias = daysIn(ym), orc = gm * dias;
     let livre = orc, livreModo = 'plano';
     if (useReal) {
       if (ym < tYm) { livre = livreReal; livreModo = 'real'; }
-      else if (ym === tYm) { livre = livreReal + g * (dias - (+today.slice(8))); livreModo = 'parcial'; }
+      else if (ym === tYm) { livre = livreReal + gm * (dias - (+today.slice(8))); livreModo = 'parcial'; }
     }
     const fixV = f => {
       if (md.fixasValor && isSet(md.fixasValor[f.id])) return +md.fixasValor[f.id];
@@ -523,9 +527,11 @@ function compute(opts){
       if (ls != null) { const multi = Array.isArray(f.dias) && f.dias.length > 1; return !multi ? ls : (ym < tYm ? ls : Math.max(ls, +f.valor || 0)); }
       return +f.valor || 0;
     };
-    const fixM = sum(fixas, fixV);
+    const fixasM = fixas.filter(f => ativoEm(f, ym)), recsM = recs.filter(f => ativoEm(f, ym));
+    const fixM = sum(fixasM, fixV);
+    const recMes = sum(recsM, r => recValorMes(md, r));
     const antigas = i === 0 ? antigoTotal : 0;
-    const saidas = fixM + recTotal + antigas + livre + saiExtra + imprev;
+    const saidas = fixM + recMes + antigas + livre + saiExtra + imprev;
     const colchao = i === 0 ? (+cfg.colchao || 0) : 0;
     const entradas = entReceb + entExtra;
     const sobra = entradas - saidas - colchao;
@@ -540,12 +546,12 @@ function compute(opts){
     let real = false;
     if (!pure && isSet(md.poteReal)) { poteFim = +md.poteReal; real = true; }
     if (!pure && isSet(md.reservaReal)) { resFim = +md.reservaReal; real = true; }
-    rows.push({ym, i, dias, recM, entReceb, entExtra, entradas, fixM, fixV, recTotal, antigas, orc, livre, livreReal, livreModo, imprev, saiExtra, extM, dM, saidas, colchao, sobra,
+    rows.push({ym, i, dias, gm, fixasM, recsM, recM, entReceb, entExtra, entradas, fixM, fixV, recTotal: recMes, antigas, orc, livre, livreReal, livreModo, imprev, saiExtra, extM, dM, saidas, colchao, sobra,
       anuaisMes, anuaisResta, poteIni, poteRend, poteDep, falta, poteFim, resIni, resRend, resDep, resFim, total: poteFim + resFim, pctMeta: meta ? resFim / meta : 0, md, real});
     poteIni = poteFim; resIni = resFim;
   });
   const model = {cfg, g, pure, useReal, months, start, end, today, tYm, rec, recPlan, fixas, recs, anuais, anuaisPlano, extras, extrasParc, diario, rows, r,
-    fixTotal, recTotal, custoVida, meta, rendaMedia, teto, antigoTotal, diasMes};
+    fixTotal, recTotal, custoVida, meta, rendaMedia, teto, antigoTotal, diasMes, gOf};
   model.fat = faturas(model);
   return model;
 }
@@ -554,7 +560,7 @@ function faturas(M){
   const map = {};
   const add = (cid, ym, v, item) => { const k = cid + '|' + ym; (map[k] = map[k] || {prev:0, items:[]}); map[k].prev += v; map[k].items.push(Object.assign({valor:v}, item)); };
   cfg.cartoes.forEach(k => { if (+k.antigo) add(k.id, months[0], +k.antigo, {desc:'Fatura já fechada e compras antes do plano', tipo:'antigo'}); });
-  months.forEach(ym => recs.forEach(rc => { const k = cardById(cfg, rc.cartao); if (!k) return; const data = ymd(ym, rc.dia); add(k.id, dueOf(k, data).dueYm, +rc.valor || 0, {desc:rc.nome, data, tipo:'recorrente'}); }));
+  months.forEach(ym => { const md = (!M.pure && S.data.meses[ym]) || {}; recs.forEach(rc => { if (!ativoEm(rc, ym)) return; const k = cardById(cfg, rc.cartao); if (!k) return; const data = ymd(ym, rc.dia); add(k.id, dueOf(k, data).dueYm, recValorMes(md, rc), {desc:rc.nome, data, tipo:'recorrente'}); }); });
   diario.forEach(d => { const k = cardById(cfg, d.pag); if (!k) return; add(k.id, dueOf(k, d.data).dueYm, +d.valor || 0, {desc:d.desc || catById(cfg, d.cat).nome, data:d.data, tipo:'diario'}); });
   return months.map(ym => {
     const row = M.rows.find(x => x.ym === ym);
@@ -582,7 +588,7 @@ function calendario(M){
   rec.forEach(r => add(r.data, {desc:'Recebimento ' + pad(r.n), valor:r.valor, kind:'receb', id:r.id, done:r.recebido}));
   rows.forEach(row => {
     const ym = row.ym, md = row.md || {};
-    fixas.forEach(f => {
+    row.fixasM.forEach(f => {
       const dias = (Array.isArray(f.dias) && f.dias.length ? f.dias : [f.dia || 1]).map(Number);
       const v = row.fixV(f) / dias.length;
       dias.forEach(dd => add(ymd(ym, dd), {desc:f.nome + (dias.length > 1 ? ' (' + (dias.indexOf(dd) + 1) + '/' + dias.length + ')' : ''), valor:-v, kind:'fixa', id:f.id, ym, done: fixaPaga(md, f)}));
@@ -604,10 +610,11 @@ function calendario(M){
   for (let d = start; d <= end; d = dAdd(d, 1)) {
     const evs = (ev[d] || []).slice();
     let livre;
-    if (!M.useReal) livre = M.g;
+    const gd = M.gOf(ymOf(d));
+    if (!M.useReal) livre = gd;
     else if (d < today) livre = debDiario[d] || 0;
-    else if (d === today) livre = (debDiario[d] || 0) + Math.max(0, M.g - (allDiario[d] || 0));
-    else livre = M.g;
+    else if (d === today) livre = (debDiario[d] || 0) + Math.max(0, gd - (allDiario[d] || 0));
+    else livre = gd;
     if (livre) evs.push({desc: d < today && M.useReal ? 'Gastos no débito (Diário)' : 'Gasto livre previsto', valor:-livre, kind:'livre'});
     saldo += sum(evs, e => e.valor);
     let ajustado = false;
@@ -621,7 +628,7 @@ function calendario(M){
 
 /* resumo do gasto livre de um mês */
 function livreStatus(M, ym){
-  const today = M.today, dias = daysIn(ym), orc = M.g * dias;
+  const today = M.today, dias = daysIn(ym), orc = M.gOf(ym) * dias;
   const dM = M.diario.filter(x => ymOf(x.data) === ym && !x.extra);
   const gasto = sum(dM, x => x.valor);
   const restantes = ym === ymOf(today) ? dias - (+today.slice(8)) + 1 : ym > ymOf(today) ? dias : 0;
@@ -818,7 +825,7 @@ function openSheet(title, body, opts){
 function closeSheet(){ const root = $('#sheet'); root.classList.remove('open'); document.body.style.overflow = ''; sheetSave = null; setTimeout(() => { if (!root.classList.contains('open')) { root.hidden = true; root.innerHTML = ''; } }, 320); }
 const fld = (id, label, val, o) => { o = o || {}; const type = o.type || 'text'; const im = o.money ? ' inputmode="decimal"' : o.int ? ' inputmode="numeric"' : ''; return `<div class="f${o.col ? ' col' : ''}"><label for="${id}">${esc(label)}</label><input class="in${o.money ? ' num' : ''}" id="${id}" type="${type}"${im} value="${esc(val == null ? '' : val)}" placeholder="${esc(o.ph || '')}"${o.af ? ' autofocus' : ''}${o.step ? ` step="${o.step}"` : ''}></div>`; };
 const sel = (id, label, val, options) => `<div class="f"><label for="${id}">${esc(label)}</label><select class="in" id="${id}">${options.map(o => `<option value="${esc(o[0])}"${String(o[0]) === String(val) ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select></div>`;
-const swf = (id, label, on) => `<div class="f"><label for="${id}" style="flex:1">${esc(label)}</label><span class="sw"><input type="checkbox" id="${id}"${on ? ' checked' : ''}><span></span></span></div>`;
+const swf = (id, label, on) => `<div class="f"><label for="${id}" style="flex:1">${esc(label)}</label><label class="sw"><input type="checkbox" id="${id}"${on ? ' checked' : ''}><span></span></label></div>`;
 const val = id => { const e = document.getElementById(id); return e ? e.value : ''; };
 const chk = id => { const e = document.getElementById(id); return !!(e && e.checked); };
 const mval = id => { const v = parseMoney(val(id)); return isNaN(v) ? null : v; };
@@ -842,7 +849,7 @@ function viewHoje(){
   if (status) h += `<div class="banner">${esc(status)}</div>`;
 
   h += assistenteCard(M);
-  const porDiaCls = ls.porDia >= M.g - 0.005 ? 'pos' : ls.porDia > 0 ? 'warn' : 'neg';
+  const porDiaCls = ls.porDia >= M.gOf(ym) - 0.005 ? 'pos' : ls.porDia > 0 ? 'warn' : 'neg';
   const pctGasto = ls.orc ? ls.gasto / ls.orc : 0;
   h += `<section><div class="hero"><div class="k">Pode gastar por dia até o fim de ${esc(MESL[+ym.slice(5) - 1])}</div><div class="big num ${porDiaCls}">${esc(fmt(ls.porDia))}</div><div class="s">${ls.restaHoje != null ? (ls.restaHoje >= 0 ? `Hoje ainda dá <b class="pos">${esc(fmt(ls.restaHoje))}</b>` : `Hoje passou <b class="neg">${esc(fmt(-ls.restaHoje))}</b>`) + ` · já gastou ${esc(fmt(ls.hoje))}` : `Regra do plano: ${esc(fmt(M.g))}/dia`}</div><div class="bar" aria-label="Gasto livre do mês"><i class="${pctGasto > 1 ? 'over' : ''}" style="width:${Math.min(100, pctGasto * 100).toFixed(1)}%"></i></div><div class="s" style="margin-top:8px">${esc(fmt(ls.gasto))} de ${esc(fmt(ls.orc))} do gasto livre · ${ls.disp >= 0 ? 'restam ' + esc(fmt(ls.disp)) : '<span class="neg">passou ' + esc(fmt(-ls.disp)) + '</span>'} em ${ls.restantes} ${ls.restantes === 1 ? 'dia' : 'dias'}</div></div>`;
   h += `<div class="btns" style="margin-top:12px"><button class="btn tint" data-act="novoGasto">${ICON.plus.replace('<svg', '<svg width="20" height="20"')} Lançar gasto manualmente</button></div></section>`;
@@ -870,8 +877,8 @@ function viewHoje(){
   const labels = [], real = [], plan = [];
   let acc = 0;
   const dMap = {}; M.diario.filter(x => ymOf(x.data) === ym && !x.extra).forEach(x => { dMap[x.data] = (dMap[x.data] || 0) + (+x.valor || 0); });
-  for (let d = 1; d <= ls.dias; d++) { const ds = ymd(ym, d); labels.push(String(d)); acc += dMap[ds] || 0; real.push(ds <= today ? acc : null); plan.push(M.g * d); }
-  h += `<section><div class="chart-card"><h4>Gasto livre acumulado</h4><div class="cs">${esc(ymLong(ym))}: o que você gastou × o ritmo de ${esc(fmt(M.g))} por dia</div>${chart({type:'line', labels, tipLabels:labels.map(d => d + '/' + ym.slice(5)), series:[{name:'Gasto real', color:'--s1', values:real, area:true, endDot:true}, {name:'Ritmo do plano', color:'--axis', values:plan, dash:true}], h:170, labW:28})}</div></section>`;
+  for (let d = 1; d <= ls.dias; d++) { const ds = ymd(ym, d); labels.push(String(d)); acc += dMap[ds] || 0; real.push(ds <= today ? acc : null); plan.push(M.gOf(ym) * d); }
+  h += `<section><div class="chart-card"><h4>Gasto livre acumulado</h4><div class="cs">${esc(ymLong(ym))}: o que você gastou × o ritmo de ${esc(fmt(M.gOf(ym)))} por dia</div>${chart({type:'line', labels, tipLabels:labels.map(d => d + '/' + ym.slice(5)), series:[{name:'Gasto real', color:'--s1', values:real, area:true, endDot:true}, {name:'Ritmo do plano', color:'--axis', values:plan, dash:true}], h:170, labW:28})}</div></section>`;
 
   // próximos 10 dias
   const from = today < ymd(M.start, 1) ? ymd(M.start, 1) : today, to = dAdd(from, 10);
@@ -990,8 +997,9 @@ function viewMes(){
 
   // fixas
   h += `<section><h3 class="gh"><span>Contas fixas (débito/Pix)</span><span class="num">${esc(fmt(row.fixM))}</span></h3><div class="group">`;
-  M.fixas.forEach(f => { const pago = fixaPaga(md, f); const v = row.fixV(f); const dias = (Array.isArray(f.dias) && f.dias.length ? f.dias : [f.dia || 1]); const ls = fixaLancSum(md, f.id); h += `<div class="row">${checkBtn(pago, 'togFixa:' + ym + ':' + f.id, 'Marcar pago')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editFixaMes:${ym}:${esc(f.id)}"><div class="t">${esc(f.nome)}</div><div class="d">dia ${esc(dias.join(', '))}${md.fixasValor && isSet(md.fixasValor[f.id]) ? ' · valor real' : ls != null ? ' · lançado ' + esc(fmt(ls)) + (dias.length > 1 ? ' de ' + esc(fmt(+f.valor)) : '') : ''}</div></button><span class="v">${money(-v)}</span></div>`; });
-  if (!M.fixas.length) h += `<div class="empty">Sem contas fixas. Cadastre em Mais → Contas fixas.</div>`;
+  row.fixasM.forEach(f => { const pago = fixaPaga(md, f); const v = row.fixV(f); const dias = (Array.isArray(f.dias) && f.dias.length ? f.dias : [f.dia || 1]); const ls = fixaLancSum(md, f.id); h += `<div class="row">${checkBtn(pago, 'togFixa:' + ym + ':' + f.id, 'Marcar pago')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editFixaMes:${ym}:${esc(f.id)}"><div class="t">${esc(f.nome)}</div><div class="d">dia ${esc(dias.join(', '))}${md.fixasValor && isSet(md.fixasValor[f.id]) ? ' · valor real' : ls != null ? ' · lançado ' + esc(fmt(ls)) + (dias.length > 1 ? ' de ' + esc(fmt(+f.valor)) : '') : ''}</div></button><span class="v">${money(-v)}</span></div>`; });
+  if (!row.fixasM.length) h += `<div class="empty">Sem contas fixas neste mês. Cadastre em Mais → Contas fixas.</div>`;
+  h += `<button class="row" data-act="editFixa:"><span class="grow"><div class="t" style="color:var(--blue)">+ Nova conta fixa</div></span></button>`;
   h += `</div></section>`;
 
   // faturas
@@ -1002,12 +1010,12 @@ function viewMes(){
 
   // gasto livre, recorrentes, extras
   h += `<section><h3 class="gh"><span>Outras saídas do mês</span></h3><div class="group">`;
-  h += `<button class="row" data-act="goDiario:${ym}"><span class="grow"><div class="t">Gasto livre</div><div class="d">${row.livreModo === 'real' ? 'real' : row.livreModo === 'parcial' ? 'real ' + esc(fmt(row.livreReal)) + ' + resto do mês previsto' : 'orçamento: ' + esc(fmt(M.g)) + ' × ' + row.dias + ' dias'}</div></span><span class="v">${money(-row.livre)}</span>${ICON.chev}</button>`;
-  h += `<button class="row" data-act="goSub:recorrentes"><span class="grow"><div class="t">Cobranças que se repetem no cartão</div><div class="d">${M.recs.map(x => esc(x.nome)).join(', ') || 'nenhuma'}</div></span><span class="v">${money(-row.recTotal)}</span>${ICON.chev}</button>`;
-  if (row.antigas) h += `<div class="row"><span class="grow"><div class="t">Faturas antigas</div><div class="d">compras feitas antes do plano, pagas neste mês</div></span><span class="v">${money(-row.antigas)}</span></div>`;
+  h += `<button class="row" data-act="editLivreMes:${ym}"><span class="grow"><div class="t">Gasto livre</div><div class="d">${esc(fmt(row.gm))}/dia${isSet(md.gastoDia) ? ' (só neste mês)' : ''} · ${row.livreModo === 'real' ? 'real' : row.livreModo === 'parcial' ? 'real ' + esc(fmt(row.livreReal)) + ' + resto do mês previsto' : 'orçamento de ' + row.dias + ' dias'}</div></span><span class="v">${money(-row.livre)}</span>${ICON.chev}</button>`;
+  row.recsM.forEach(r => { const k = cardById(cfg, r.cartao); const ov = md.recValor && isSet(md.recValor[r.id]); h += `<button class="row" data-act="editRecMes:${ym}:${esc(r.id)}"><span class="grow"><div class="t">${esc(r.nome)}</div><div class="d">cobrança no ${esc(k ? k.nome : 'cartão')} · dia ${esc(r.dia)}${ov ? ' · valor só deste mês' : ''}</div></span><span class="v">${money(-recValorMes(md, r))}</span>${ICON.chev}</button>`; });
+  if (row.antigas) h += `<button class="row" data-act="goSub:cartoes"><span class="grow"><div class="t">Faturas antigas</div><div class="d">compras feitas antes do plano, pagas neste mês · editar em Cartões</div></span><span class="v">${money(-row.antigas)}</span>${ICON.chev}</button>`;
   if (row.imprev) h += `<button class="row" data-act="goDiario:${ym}"><span class="grow"><div class="t">Imprevistos</div><div class="d">lançados no Diário</div></span><span class="v">${money(-row.imprev)}</span>${ICON.chev}</button>`;
   row.extM.filter(p => p.e.tipo !== 'entrada').forEach(p => { h += `<div class="row">${checkBtn(p.pago, 'togExtra:' + p.e.id + ':' + p.i, 'Marcar pago')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editExtra:${esc(p.e.id)}"><div class="t">${esc(p.e.nome)}${p.e.parcelas > 1 ? ' (' + (p.i + 1) + '/' + p.e.parcelas + ')' : ''}</div><div class="d">${esc(p.e.forma || 'Pix')} · ${esc(dLabel(p.data))}</div></button><span class="v">${money(-p.valor)}</span></div>`; });
-  if (row.colchao) h += `<div class="row"><span class="grow"><div class="t">Colchão na conta corrente</div><div class="d">separado uma vez e deixado na conta</div></span><span class="v">${money(-row.colchao)}</span></div>`;
+  if (row.colchao) h += `<button class="row" data-act="editCfg:colchao"><span class="grow"><div class="t">Colchão na conta corrente</div><div class="d">separado uma vez e deixado na conta</div></span><span class="v">${money(-row.colchao)}</span>${ICON.chev}</button>`;
   h += `</div><p class="gf"><button class="btn tint sm" data-act="novoExtra:saida:${ym}" style="display:inline-flex">+ Gasto extra planejado</button></p></section>`;
 
   // anuais
@@ -1171,7 +1179,9 @@ PAGES.premissas = () => {
   h += `<section><div class="note">Tudo o que o plano usa para calcular. Toque numa linha para mudar; os números do app inteiro se refazem na hora.</div></section>`;
   h += `<section><h3 class="gh">Início do plano</h3><div class="group">${r('inicio', 'Primeiro mês', ymLong(c.inicio))}${r('meses', 'Duração', c.meses + ' meses')}${r('saldoContaInicial', 'Saldo na conta no dia 1º', fmt(c.saldoContaInicial))}${r('poteInicial', 'Já guardado no Pote Anuais', fmt(c.poteInicial))}${r('reservaInicial', 'Já guardado na Reserva', fmt(c.reservaInicial))}</div></section>`;
   h += `<section><h3 class="gh">Suas regras</h3><div class="group">${r('gastoDia', 'Gasto livre por dia', fmt(c.gastoDia), 'comer fora, lazer, farmácia, roupas…')}${r('tetoPct', 'Teto de cartão', nf(c.tetoPct, 1) + '% das entradas', '= ' + fmt(M.teto) + ' por mês')}${r('metaMeses', 'Meta da reserva', c.metaMeses + ' meses de custo de vida', '= ' + fmt(M.meta))}${r('rendimento', 'Rendimento das caixinhas', nf(c.rendimento, 2) + '% ao mês', 'líquido, já sem IR')}${r('colchao', 'Colchão na conta corrente', fmt(c.colchao), 'separado 1 vez no 1º mês')}${r('limiteConta', 'Limite da conta (cheque especial)', fmt(c.limiteConta))}${r('diasMes', 'Dias num mês médio', nf(c.diasMes, 1))}</div>`;
-  h += `<div class="group" style="margin-top:14px"><div class="row"><span class="grow"><div class="t">Usar gastos reais nas projeções</div><div class="d">meses passados usam o Diário; desligado = só o orçamento</div></span><span class="sw"><input type="checkbox" id="p-real" data-act="togReal"${c.usarReal !== false ? ' checked' : ''}><span></span></span></div></div></section>`;
+  h += `<div class="group" style="margin-top:14px"><div class="row"><span class="grow"><div class="t">Usar gastos reais nas projeções</div><div class="d">meses passados usam o Diário; desligado = só o orçamento</div></span><label class="sw" aria-label="Usar gastos reais nas projeções"><input type="checkbox" id="p-real" data-act="togReal"${c.usarReal !== false ? ' checked' : ''}><span></span></label></div></div></section>`;
+  h += `<section><h3 class="gh">Calculadora de 2 anos (cenários)</h3><div class="group">${r('cenPouco', 'POUCO: gasto livre por dia', fmt(+c.cenarios.pouco.gasto))}${r('cenPoucoC', 'POUCO: cortes extras por mês', fmt(+c.cenarios.pouco.cortes || 0))}${r('cenMuito', 'MUITO: gasto livre por dia', fmt(+c.cenarios.muito.gasto))}${r('cenMuitoC', 'MUITO: cortes extras por mês', fmt(+c.cenarios.muito.cortes || 0))}${r('cenPrazo', 'Prazo', (c.cenarios.prazo || 24) + ' meses')}</div><p class="gf">O cenário MÉDIO usa o seu gasto livre por dia.</p></section>`;
+  h += `<section><h3 class="gh">Mais valores do plano</h3><div class="group">${rowNav('goSub:recebimentos', 'Salário e recebimentos', 'valor padrão, datas e cada pagamento', null, '📥')}${rowNav('goSub:fixas', 'Contas fixas', 'valores, dias, início e fim', null, '🏠')}${rowNav('goSub:recorrentes', 'Cobranças no cartão', 'valores, dias, início e fim', null, '🔁')}${rowNav('goSub:cartoes', 'Cartões', 'fechamento, vencimento, fatura anterior', null, '💳')}${rowNav('goSub:anuais', 'Contas anuais', 'valores e meses', null, '🗓️')}${rowNav('goSub:extras', 'Extras planejados', 'parcelas e valores', null, '💍')}</div><p class="gf">Valores de um mês só (luz de outubro, gasto livre de dezembro, uma assinatura mais cara) são editados na aba Mês, tocando no item.</p></section>`;
   h += `<section><h3 class="gh">Veículo</h3><div class="group">${r('finalPlaca', 'Final da placa', c.placa.finalPlaca === '' ? 'não informado' : c.placa.finalPlaca, 'define o mês do licenciamento (SP)')}</div></section>`;
   h += `<section><h3 class="gh">Custo de vida calculado</h3><div class="group"><div class="row"><span class="grow"><div class="t">Contas fixas</div></span><span class="v num">${fmt(M.fixTotal)}</span></div><div class="row"><span class="grow"><div class="t">Recorrentes no cartão</div></span><span class="v num">${fmt(M.recTotal)}</span></div><div class="row"><span class="grow"><div class="t">Gasto livre (${fmt(M.g)} × ${nf(M.diasMes, 1)})</div></span><span class="v num">${fmt(M.g * M.diasMes)}</span></div><div class="row"><span class="grow"><div class="t"><b>Custo de vida mensal</b></div></span><span class="v num"><b>${fmt(M.custoVida)}</b></span></div></div></section>`;
   return h;
@@ -1187,11 +1197,14 @@ const CFG_FIELDS = {
   colchao:{label:'Colchão', money:true, hint:'Dinheiro que fica parado na conta corrente para cobrir os dias entre o fim do mês e o primeiro recebimento.'},
   limiteConta:{label:'Limite', money:true, hint:'Limite do cheque especial. O app avisa quando o saldo previsto fica negativo.'},
   diasMes:{label:'Dias', money:true, hint:'Média de dias de um mês (365 ÷ 12 = 30,4). Usado no custo de vida.'},
+  cenPouco:{label:'Gasto/dia (POUCO)', money:true, cen:['pouco', 'gasto']}, cenPoucoC:{label:'Cortes/mês (POUCO)', money:true, cen:['pouco', 'cortes']},
+  cenMuito:{label:'Gasto/dia (MUITO)', money:true, cen:['muito', 'gasto']}, cenMuitoC:{label:'Cortes/mês (MUITO)', money:true, cen:['muito', 'cortes'], hint:'Quanto você cortaria de contas por mês nesse cenário (ex.: cancelar uma assinatura).'},
+  cenPrazo:{label:'Prazo (meses)', int:true, cen:['prazo']},
   finalPlaca:{label:'Final da placa', int:true, hint:'Licenciamento SP: finais 1-2 julho, 3-4 agosto, 5-6 setembro, 7-8 outubro, 9 novembro, 0 dezembro.'}
 };
 function editCfg(k){
   const f = CFG_FIELDS[k], c = C();
-  const cur = k === 'finalPlaca' ? c.placa.finalPlaca : c[k];
+  const cur = k === 'finalPlaca' ? c.placa.finalPlaca : f.cen ? (f.cen.length === 1 ? c.cenarios[f.cen[0]] : (c.cenarios[f.cen[0]] || {})[f.cen[1]]) : c[k];
   const v = f.money ? moneyIn(cur) : cur;
   openSheet(f.label, `<div class="fg">${fld('cf-v', f.label, v, {money:f.money, int:f.int, type:f.type || 'text', af:true})}</div>${f.hint ? `<p class="fh">${esc(f.hint)}</p>` : ''}`, {onSave: () => {
     let nv = val('cf-v').trim();
@@ -1199,6 +1212,7 @@ function editCfg(k){
     if (f.type === 'month') { if (!/^\d{4}-\d{2}$/.test(nv)) { toast('Escolha um mês.'); return false; } }
     else { nv = f.money ? parseMoney(nv) : parseInt(nv, 10); if (!isSet(nv) || isNaN(nv) || nv < 0) { toast('Digite um número válido.'); return false; } }
     if (k === 'meses' && (nv < 1 || nv > 60)) { toast('Use de 1 a 60 meses.'); return false; }
+    if (f.cen) { const cen = clone(c.cenarios); if (f.cen.length === 1) cen[f.cen[0]] = Math.max(1, Math.min(120, nv)); else { cen[f.cen[0]] = Object.assign({}, cen[f.cen[0]], {[f.cen[1]]:nv}); } saveCfg({cenarios:cen}); Object.keys(UI.calc).forEach(x => { if (/^p(p|mu|mc|z)$/.test(x)) delete UI.calc[x]; }); toast('Salvo'); return; }
     saveCfg({[k]:nv}); toast('Salvo');
   }});
 }
@@ -1236,14 +1250,19 @@ function editReceb2(k){
 function sheetReceb(id){
   const M = compute(), x = M.rec.find(q => q.id === id); if (!x) return;
   const o = S.data.receb[id] || {};
-  openSheet('Recebimento ' + pad(x.n), `<div class="amount"><span>R$</span><input id="rc-v" class="num" inputmode="decimal" placeholder="${esc(nf(x.padrao, 2))}" value="${esc(isSet(o.valor) ? moneyIn(o.valor) : '')}" autofocus aria-label="Valor real"></div><p class="fh" style="text-align:center">Previsto: ${esc(fmt(x.padrao))}. Deixe vazio para usar o previsto.</p><div class="fg">${fld('rc-d', 'Data real', o.data || '', {type:'date'})}${swf('rc-ok', 'Já caiu na conta', !!o.recebido)}</div><p class="fh">Data prevista: ${esc(dayLong(x.prevista))}${x.prevista !== shiftDate(C(), x.prevista) ? ' (feriado → ' + esc(dLabel(shiftDate(C(), x.prevista))) + ')' : ''}.</p>`, {onSave: () => {
+  openSheet('Recebimento ' + pad(x.n), `<div class="amount"><span>R$</span><input id="rc-v" class="num" inputmode="decimal" placeholder="${esc(nf(x.padrao, 2))}" value="${esc(isSet(o.valor) && +o.valor !== 0 ? moneyIn(o.valor) : '')}" autofocus aria-label="Valor"></div><p class="fh" style="text-align:center">Valor padrão: ${esc(fmt(x.padrao))}. Digite outro valor para este pagamento (previsto ou real); vazio usa o padrão.</p><div class="fg">${fld('rc-d', 'Data', o.data || x.data, {type:'date'})}${swf('rc-ok', 'Já caiu na conta', !!o.recebido)}${swf('rc-x', 'Este pagamento não vai acontecer', isSet(o.valor) && +o.valor === 0)}</div><div class="fg">${fld('rc-o', 'Observação', o.obs || '', {col:true})}</div><p class="fh">Data prevista pela regra: ${esc(dayLong(x.prevista))}${x.prevista !== shiftDate(C(), x.prevista) ? ' (feriado → ' + esc(dLabel(shiftDate(C(), x.prevista))) + ')' : ''}. Para mudar o valor padrão de todos, vá em Mais → Recebimentos.</p>${S.data.receb[id] ? `<div class="btns" style="margin-top:18px"><button class="btn tint" data-act="resetReceb:${id}">Voltar ao previsto pela regra</button></div>` : ''}`, {onSave: () => {
+    const cancel = chk('rc-x');
     const v = val('rc-v').trim() === '' ? null : mval('rc-v');
-    if (val('rc-v').trim() !== '' && v == null) { toast('Valor inválido.'); return false; }
-    const doc = {recebido:chk('rc-ok')}; if (v != null) doc.valor = v; if (val('rc-d')) doc.data = val('rc-d'); if (o.obs) doc.obs = o.obs;
+    if (!cancel && val('rc-v').trim() !== '' && v == null) { toast('Valor inválido.'); return false; }
+    const doc = {recebido: cancel ? false : chk('rc-ok')};
+    if (cancel) doc.valor = 0; else if (v != null) doc.valor = v;
+    if (val('rc-d') && val('rc-d') !== shiftDate(C(), x.prevista)) doc.data = val('rc-d');
+    if (val('rc-o').trim()) doc.obs = val('rc-o').trim();
     put('receb', id, doc); toast('Salvo');
   }});
 }
 
+const periodo = f => (f.desde || f.ate) ? ` <span class="pill info">${f.desde ? 'de ' + ymLabel(f.desde) : ''}${f.desde && f.ate ? ' ' : ''}${f.ate ? 'até ' + ymLabel(f.ate) : ''}</span>` : '';
 function listPage(title, coll, rowsHtml, addAct, note){
   let h = navbar(title, 'Mais');
   if (note) h += `<section><div class="note">${note}</div></section>`;
@@ -1253,29 +1272,31 @@ function listPage(title, coll, rowsHtml, addAct, note){
 PAGES.fixas = () => {
   const fs = list('fixas').sort(byOrder);
   const tot = sum(fs.filter(f => f.ativa !== false), f => f.valor);
-  return listPage('Contas fixas', 'fixas', fs.map(f => rowNav('editFixa:' + f.id, esc(f.nome) + (f.ativa === false ? ' <span class="pill">pausada</span>' : ''), 'dia ' + esc((f.dias || [f.dia]).join(', ')) + ' · ' + esc(f.forma || 'Débito/Pix') + (f.obs ? ' · ' + esc(f.obs) : ''), esc(fmt(+f.valor)))).join(''), 'editFixa:', `Contas pagas todo mês no débito ou Pix. Total: <b>${esc(fmt(tot))}</b> por mês. Gasto dividido em vários dias (ex.: combustível) usa vários dias separados por vírgula.`);
+  return listPage('Contas fixas', 'fixas', fs.map(f => rowNav('editFixa:' + f.id, esc(f.nome) + (f.ativa === false ? ' <span class="pill">pausada</span>' : '') + periodo(f), 'dia ' + esc((f.dias || [f.dia]).join(', ')) + ' · ' + esc(f.forma || 'Débito/Pix') + (f.obs ? ' · ' + esc(f.obs) : ''), esc(fmt(+f.valor)))).join(''), 'editFixa:', `Contas pagas todo mês no débito ou Pix. Total: <b>${esc(fmt(tot))}</b> por mês. Gasto dividido em vários dias (ex.: combustível) usa vários dias separados por vírgula.`);
 };
 function sheetFixa(id){
   const f = id ? clone(S.data.fixas[id]) : {nome:'', valor:'', dias:[5], forma:'Débito/Pix', ativa:true, obs:''};
-  openSheet(id ? 'Conta fixa' : 'Nova conta fixa', `<div class="fg">${fld('fx-n', 'Nome', f.nome, {af:!id})}${fld('fx-v', 'Valor/mês', moneyIn(f.valor), {money:true})}${fld('fx-d', 'Dia(s)', (f.dias || [f.dia || 1]).join(', '), {ph:'ex.: 5 ou 3, 10, 17, 24'})}${fld('fx-f', 'Forma', f.forma)}${swf('fx-a', 'Ativa', f.ativa !== false)}</div><div class="fg">${fld('fx-o', 'Observação', f.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:fixas:${esc(id)}">Apagar conta</button></div>` : ''}`, {onSave: () => {
+  openSheet(id ? 'Conta fixa' : 'Nova conta fixa', `<div class="fg">${fld('fx-n', 'Nome', f.nome, {af:!id})}${fld('fx-v', 'Valor/mês', moneyIn(f.valor), {money:true})}${fld('fx-d', 'Dia(s)', (f.dias || [f.dia || 1]).join(', '), {ph:'ex.: 5 ou 3, 10, 17, 24'})}${fld('fx-f', 'Forma', f.forma)}${swf('fx-a', 'Ativa', f.ativa !== false)}</div><div class="fg">${fld('fx-de', 'Começa em', f.desde || '', {type:'month'})}${fld('fx-ate', 'Termina em', f.ate || '', {type:'month'})}</div><p class="fh">Deixe vazio para valer em todos os meses. Ex.: mudou de apartamento em janeiro → termine esta em dezembro e crie a nova a partir de janeiro.</p><div class="fg">${fld('fx-o', 'Observação', f.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:fixas:${esc(id)}">Apagar conta</button></div>` : ''}`, {onSave: () => {
     const v = mval('fx-v'), nm = val('fx-n').trim(); const ds = val('fx-d').split(/[^\d]+/).map(Number).filter(x => x >= 1 && x <= 31);
     if (!nm) { toast('Dê um nome.'); return false; } if (v == null) { toast('Digite o valor.'); return false; } if (!ds.length) { toast('Digite o dia.'); return false; }
-    put('fixas', id || uid(), Object.assign(f, {nome:nm, valor:v, dias:ds, forma:val('fx-f').trim(), ativa:chk('fx-a'), obs:val('fx-o').trim(), ordem:f.ordem || Date.now()})); toast('Salvo');
+    const de = val('fx-de') || null, ate = val('fx-ate') || null; if (de && ate && ate < de) { toast('O mês final é antes do inicial.'); return false; }
+    put('fixas', id || uid(), Object.assign(f, {nome:nm, valor:v, dias:ds, forma:val('fx-f').trim(), ativa:chk('fx-a'), obs:val('fx-o').trim(), desde:de, ate, ordem:f.ordem || Date.now()})); toast('Salvo');
   }});
 }
 PAGES.recorrentes = () => {
   const c = C(), rs = list('recorrentes').sort(byOrder);
   const tot = sum(rs.filter(f => f.ativa !== false), f => f.valor);
-  return listPage('Cobranças no cartão', 'recorrentes', rs.map(f => { const k = cardById(c, f.cartao); return rowNav('editRec:' + f.id, esc(f.nome) + (f.ativa === false ? ' <span class="pill">pausada</span>' : ''), esc(k ? k.nome : 'sem cartão') + ' · compra dia ' + esc(f.dia) + (k ? ' · cai na fatura seguinte ao fechamento (dia ' + k.fecha + ')' : ''), esc(fmt(+f.valor))); }).join(''), 'editRec:', `Assinaturas, academia, compras quinzenais: o que passa no cartão todo mês. Total: <b>${esc(fmt(tot))}</b>. Contam no mês da compra, e o app calcula em qual fatura cada uma cai.`);
+  return listPage('Cobranças no cartão', 'recorrentes', rs.map(f => { const k = cardById(c, f.cartao); return rowNav('editRec:' + f.id, esc(f.nome) + (f.ativa === false ? ' <span class="pill">pausada</span>' : '') + periodo(f), esc(k ? k.nome : 'sem cartão') + ' · compra dia ' + esc(f.dia) + (k ? ' · cai na fatura seguinte ao fechamento (dia ' + k.fecha + ')' : ''), esc(fmt(+f.valor))); }).join(''), 'editRec:', `Assinaturas, academia, compras quinzenais: o que passa no cartão todo mês. Total: <b>${esc(fmt(tot))}</b>. Contam no mês da compra, e o app calcula em qual fatura cada uma cai.`);
 };
 function sheetRec(id){
   const c = C();
   const f = id ? clone(S.data.recorrentes[id]) : {nome:'', valor:'', dia:1, cartao:(c.cartoes[0] || {}).id, ativa:true, obs:''};
-  openSheet(id ? 'Cobrança no cartão' : 'Nova cobrança', `<div class="fg">${fld('rc-n', 'Nome', f.nome, {af:!id})}${fld('rc-v', 'Valor/mês', moneyIn(f.valor), {money:true})}${fld('rc-d', 'Dia da compra', f.dia, {int:true})}${sel('rc-k', 'Cartão', f.cartao, c.cartoes.map(k => [k.id, k.nome]))}${swf('rc-a', 'Ativa', f.ativa !== false)}</div><div class="fg">${fld('rc-o', 'Observação', f.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:recorrentes:${esc(id)}">Apagar cobrança</button></div>` : ''}`, {onSave: () => {
+  openSheet(id ? 'Cobrança no cartão' : 'Nova cobrança', `<div class="fg">${fld('rc-n', 'Nome', f.nome, {af:!id})}${fld('rc-v', 'Valor/mês', moneyIn(f.valor), {money:true})}${fld('rc-d', 'Dia da compra', f.dia, {int:true})}${sel('rc-k', 'Cartão', f.cartao, c.cartoes.map(k => [k.id, k.nome]))}${swf('rc-a', 'Ativa', f.ativa !== false)}</div><div class="fg">${fld('rc-de', 'Começa em', f.desde || '', {type:'month'})}${fld('rc-ate', 'Termina em', f.ate || '', {type:'month'})}</div><p class="fh">Cancelou uma assinatura? Coloque o último mês em “Termina em”. Vazio = todos os meses.</p><div class="fg">${fld('rc-o', 'Observação', f.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:recorrentes:${esc(id)}">Apagar cobrança</button></div>` : ''}`, {onSave: () => {
     const v = mval('rc-v'), nm = val('rc-n').trim(), d = parseInt(val('rc-d'), 10);
     if (!nm || v == null || !(d >= 1 && d <= 31)) { toast('Preencha nome, valor e dia.'); return false; }
     if (!c.cartoes.length) { toast('Cadastre um cartão antes.'); return false; }
-    put('recorrentes', id || uid(), Object.assign(f, {nome:nm, valor:v, dia:d, cartao:val('rc-k'), ativa:chk('rc-a'), obs:val('rc-o').trim(), ordem:f.ordem || Date.now()})); toast('Salvo');
+    const de = val('rc-de') || null, ate = val('rc-ate') || null; if (de && ate && ate < de) { toast('O mês final é antes do inicial.'); return false; }
+    put('recorrentes', id || uid(), Object.assign(f, {nome:nm, valor:v, dia:d, cartao:val('rc-k'), ativa:chk('rc-a'), obs:val('rc-o').trim(), desde:de, ate, ordem:f.ordem || Date.now()})); toast('Salvo');
   }});
 }
 PAGES.cartoes = () => {
@@ -1430,7 +1451,7 @@ function calcPatrimonioOut(){
   const r = cnum('pr', c.rendimento) / 100;
   const sc = [
     {k:'MÉDIO', d:'segue o plano', g:cnum('pm', M.g), cortes:0, color:'--s1'},
-    {k:'POUCO', d:'gasta mais', g:cnum('pp', c.cenarios.pouco.gasto), cortes:0, color:'--s2'},
+    {k:'POUCO', d:'gasta mais', g:cnum('pp', c.cenarios.pouco.gasto), cortes:+c.cenarios.pouco.cortes || 0, color:'--s2'},
     {k:'MUITO', d:'aperta o cinto', g:cnum('pmu', c.cenarios.muito.gasto), cortes:cnum('pmc', c.cenarios.muito.cortes || 0), color:'--s3'}
   ].map(s => Object.assign(s, projPatrimonio(M, s.g, s.cortes, prazo, r)));
   const labels = Array.from({length:prazo + 1}, (_, i) => ymLabel(ymAdd(M.start, i)));
@@ -1541,7 +1562,7 @@ function onCalcInput(ev){
 function sheetFechar(ym){
   const M = compute(), row = M.rows.find(r => r.ym === ym), md = row.md || {};
   const plan = row.poteDep + row.resDep;
-  openSheet('Fechar ' + ymLabel(ym), `<div class="note" style="margin-top:8px">Planejado: mandar <b>${esc(fmt(plan))}</b> (Pote ${esc(fmt(row.poteDep))} + Reserva ${esc(fmt(row.resDep))}).</div><div class="fg">${fld('fm-t', 'Quanto mandei', isSet(md.transferido) ? moneyIn(md.transferido) : '', {money:true, ph:nf(plan)})}</div><h3 class="gh" style="margin-top:18px">Saldos reais no fim do mês</h3><div class="fg" style="margin-top:0">${fld('fm-p', 'Pote Anuais', isSet(md.poteReal) ? moneyIn(md.poteReal) : '', {money:true, ph:nf(row.poteFim)})}${fld('fm-r', 'Reserva', isSet(md.reservaReal) ? moneyIn(md.reservaReal) : '', {money:true, ph:nf(row.resFim)})}${fld('fm-c', 'Conta corrente', '', {money:true, ph:'opcional'})}</div><p class="fh">Deixe vazio o que não souber. Os saldos reais das caixinhas substituem a previsão, e os meses seguintes partem deles. O saldo da conta corrige o calendário a partir do último dia do mês.</p>`, {saveLabel:'Fechar', onSave: () => {
+  openSheet('Fechar ' + ymLabel(ym), `<div class="note" style="margin-top:8px">Planejado: mandar <b>${esc(fmt(plan))}</b> (Pote ${esc(fmt(row.poteDep))} + Reserva ${esc(fmt(row.resDep))}).</div><div class="fg">${fld('fm-t', 'Quanto mandei', isSet(md.transferido) ? moneyIn(md.transferido) : '', {money:true, ph:nf(plan)})}</div><h3 class="gh" style="margin-top:18px">Saldos reais no fim do mês</h3><div class="fg" style="margin-top:0">${fld('fm-p', 'Pote Anuais', isSet(md.poteReal) ? moneyIn(md.poteReal) : '', {money:true, ph:nf(row.poteFim)})}${fld('fm-r', 'Reserva', isSet(md.reservaReal) ? moneyIn(md.reservaReal) : '', {money:true, ph:nf(row.resFim)})}${fld('fm-c', 'Conta corrente', '', {money:true, ph:'opcional'})}</div><p class="fh">Deixe vazio o que não souber. Os saldos reais das caixinhas substituem a previsão, e os meses seguintes partem deles. O saldo da conta corrige o calendário a partir do último dia do mês.</p>${lancList(md.caixinhaLanc, 'delCaixa:' + ym, 'Envios para as caixinhas lançados')}${md.fechado ? `<div class="btns" style="margin-top:18px"><button class="btn danger" data-act="reabrirMes:${ym}">Reabrir o mês (voltar à previsão)</button></div>` : ''}`, {saveLabel:'Fechar', onSave: () => {
     putMes(ym, m => {
       const t = mval('fm-t'), p = mval('fm-p'), r = mval('fm-r');
       if (t != null) m.transferido = t; else delete m.transferido;
@@ -1565,10 +1586,29 @@ function sheetFatura(ym, cid){
     putMes(ym, m => { m.faturas = m.faturas || {}; const o = {pago:chk('ft-p')}; if (v != null) o.valor = v; m.faturas[cid] = o; }); toast('Salvo');
   }});
 }
+function lancList(l, act, titulo){
+  if (!l || !l.length) return '';
+  return `<h3 class="gh" style="margin-top:18px"><span>${esc(titulo)}</span><span class="num">${esc(fmt(sum(l, x => x.valor)))}</span></h3><div class="group">${l.map(x => `<div class="row"><span class="grow"><div class="t">${esc(x.desc || 'Lançamento')}</div><div class="d">${esc(dLabelY(x.data))}</div></span><span class="v num">${esc(fmt(x.valor))}</span><button class="res-x" data-act="${act}:${esc(x.fp)}" aria-label="Apagar lançamento">✕</button></div>`).join('')}</div>`;
+}
+function sheetRecMes(ym, id){
+  const r = S.data.recorrentes[id]; if (!r) return;
+  const md = S.data.meses[ym] || {}; const cur = md.recValor && isSet(md.recValor[id]) ? md.recValor[id] : '';
+  openSheet(r.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="rm-v" class="num" inputmode="decimal" placeholder="${esc(nf(+r.valor))}" value="${esc(isSet(cur) ? moneyIn(cur) : '')}" autofocus aria-label="Valor neste mês"></div><p class="fh" style="text-align:center">Valor padrão: ${esc(fmt(+r.valor))}. Digite outro valor só para ${esc(ymLong(ym))}; vazio usa o padrão. Use 0 se não houver cobrança neste mês.</p><div class="btns" style="margin-top:18px"><button class="btn tint" data-act="editRec:${esc(id)}">Editar a cobrança (todos os meses)</button><button class="btn tint" data-act="encerrar:recorrentes:${esc(id)}:${ym}">Cancelar a partir deste mês</button></div>`, {onSave: () => {
+    const raw = val('rm-v').trim(), v = raw ? mval('rm-v') : null; if (raw && v == null) { toast('Valor inválido.'); return false; }
+    putMes(ym, m => { m.recValor = m.recValor || {}; if (v != null) m.recValor[id] = v; else delete m.recValor[id]; }); toast('Salvo');
+  }});
+}
+function sheetLivreMes(ym){
+  const c = C(); const md = S.data.meses[ym] || {}; const cur = isSet(md.gastoDia) ? md.gastoDia : '';
+  openSheet('Gasto livre · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="lv-v" class="num" inputmode="decimal" placeholder="${esc(nf(+c.gastoDia))}" value="${esc(isSet(cur) ? moneyIn(cur) : '')}" autofocus aria-label="Gasto livre por dia neste mês"></div><p class="fh" style="text-align:center">por dia em ${esc(ymLong(ym))}. Padrão do plano: ${esc(fmt(+c.gastoDia))}/dia (${esc(fmt(+c.gastoDia * daysIn(ym)))} no mês). Vazio usa o padrão.</p><p class="fh">Use para um mês diferente: férias, dezembro com festas, um mês de aperto. Para mudar todos os meses, vá em Mais → Premissas.</p><div class="btns" style="margin-top:18px"><button class="btn tint" data-act="goDiario:${ym}">Ver os lançamentos do Diário</button></div>`, {onSave: () => {
+    const raw = val('lv-v').trim(), v = raw ? mval('lv-v') : null; if (raw && (v == null || v < 0)) { toast('Valor inválido.'); return false; }
+    putMes(ym, m => { if (v != null) m.gastoDia = v; else delete m.gastoDia; }); toast('Salvo');
+  }});
+}
 function sheetFixaMes(ym, id){
   const f = S.data.fixas[id]; if (!f) return;
   const md = S.data.meses[ym] || {}; const cur = md.fixasValor && isSet(md.fixasValor[id]) ? md.fixasValor[id] : '';
-  openSheet(f.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="fm-v" class="num" inputmode="decimal" placeholder="${esc(nf(+f.valor))}" value="${esc(isSet(cur) ? moneyIn(cur) : '')}" autofocus aria-label="Valor real"></div><p class="fh" style="text-align:center">Valor padrão: ${esc(fmt(+f.valor))}. Deixe vazio para usar o padrão.</p><div class="fg">${swf('fm-p', 'Já paguei', !!(md.fixasPagas && md.fixasPagas[id]))}</div>${f.obs ? `<p class="fh">${esc(f.obs)}</p>` : ''}<div class="btns" style="margin-top:18px"><button class="btn tint" data-act="editFixa:${esc(id)}">Editar a conta (todos os meses)</button></div>`, {onSave: () => {
+  openSheet(f.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="fm-v" class="num" inputmode="decimal" placeholder="${esc(nf(+f.valor))}" value="${esc(isSet(cur) ? moneyIn(cur) : '')}" autofocus aria-label="Valor real"></div><p class="fh" style="text-align:center">Valor padrão: ${esc(fmt(+f.valor))}. Deixe vazio para usar o padrão.</p><div class="fg">${swf('fm-p', 'Já paguei', !!(md.fixasPagas && md.fixasPagas[id]))}</div>${f.obs ? `<p class="fh">${esc(f.obs)}</p>` : ''}${lancList(md.fixasLanc && md.fixasLanc[id], 'delLanc:' + ym + ':' + id, 'Pagamentos lançados (fala ou extrato)')}<div class="btns" style="margin-top:18px"><button class="btn tint" data-act="editFixa:${esc(id)}">Editar a conta (todos os meses)</button><button class="btn tint" data-act="encerrar:fixas:${esc(id)}:${ym}">Encerrar a partir deste mês</button></div>`, {onSave: () => {
     const raw = val('fm-v').trim(), v = raw ? mval('fm-v') : null; if (raw && v == null) { toast('Valor inválido.'); return false; }
     putMes(ym, m => { m.fixasValor = m.fixasValor || {}; m.fixasPagas = m.fixasPagas || {}; if (v != null) m.fixasValor[id] = v; else delete m.fixasValor[id]; if (chk('fm-p')) m.fixasPagas[id] = true; else delete m.fixasPagas[id]; }); toast('Salvo');
   }});
@@ -1920,7 +1960,7 @@ function avisosHtml(M){
   else if (today > ymd(M.end, 31)) out.push(['info', 'O plano terminou. Atualize o primeiro mês nas Premissas para seguir calculando.']);
   else {
     if (ls.restaHoje != null) out.push(ls.restaHoje >= 0 ? ['good', `Hoje você ainda pode gastar <b>${fmt(ls.restaHoje)}</b>.`] : ['crit', `Hoje você passou <b>${fmt(-ls.restaHoje)}</b> do limite do dia.`]);
-    if (ls.disp >= 0) out.push([ls.porDia >= M.g * 0.8 ? 'good' : 'warn', `Até o fim de ${MESL[+ym.slice(5) - 1]}: <b>${fmt(ls.disp)}</b> no total, ou <b>${fmt(ls.porDia)} por dia</b> nos próximos ${ls.restantes} ${ls.restantes === 1 ? 'dia' : 'dias'}.`]);
+    if (ls.disp >= 0) out.push([ls.porDia >= M.gOf(ym) * 0.8 ? 'good' : 'warn', `Até o fim de ${MESL[+ym.slice(5) - 1]}: <b>${fmt(ls.disp)}</b> no total, ou <b>${fmt(ls.porDia)} por dia</b> nos próximos ${ls.restantes} ${ls.restantes === 1 ? 'dia' : 'dias'}.`]);
     else { const row = M.rows.find(r => r.ym === ym); out.push(['crit', `Você passou <b>${fmt(-ls.disp)}</b> do gasto livre do mês. Isso sai da sobra, que fica em <b>${fmt(row.sobra)}</b>. Daqui até o fim do mês, o ideal é gastar zero.`]); }
     const esp = M.teto - M.recTotal - comprasCartaoMes(M, ym);
     if (M.cfg.cartoes.length) out.push(esp >= 0 ? ['info', `No cartão ainda cabem <b>${fmt(esp)}</b> em compras novas este mês (teto de ${fmt(M.teto)}).`] : ['crit', `As compras no cartão deste mês passaram o teto em <b>${fmt(-esp)}</b>.`]);
@@ -2469,6 +2509,13 @@ const ACT = {
   },
   confirmRestore: () => { closeSheet(); restore(ACT._restoreTxt || ''); },
   apagarTudo: () => openSheet('Apagar o Diário', `<div class="note" style="margin-top:8px">Todos os ${list('diario').length} lançamentos do Diário serão apagados. Faça um backup antes.</div><div class="btns" style="margin-top:14px"><button class="btn danger" data-act="confirmApagar">Apagar lançamentos</button></div>`),
+  editLivreMes: ym => sheetLivreMes(ym),
+  editRecMes: a => { const [ym, id] = a.split(':'); sheetRecMes(ym, id); },
+  encerrar: a => { const [c, id, ym] = a.split(':'); const d = clone(S.data[c][id]); if (!d) return; const ate = ymAdd(ym, -1); if (d.desde && ate < d.desde) { closeSheet(); del(c, id); toast('Apagada (começava neste mês)'); return; } d.ate = ate; closeSheet(); put(c, id, d); toast('Encerrada: último mês ' + ymLabel(ate)); },
+  resetReceb: id => { closeSheet(); del('receb', id); toast('Voltou ao previsto'); },
+  delLanc: a => { const [ym, id, fp] = a.split(':'); putMes(ym, m => { if (m.fixasLanc && m.fixasLanc[id]) { m.fixasLanc[id] = m.fixasLanc[id].filter(x => x.fp !== fp); if (!m.fixasLanc[id].length) delete m.fixasLanc[id]; } }); closeSheet(); toast('Lançamento apagado'); },
+  delCaixa: a => { const [ym, fp] = a.split(':'); putMes(ym, m => { m.caixinhaLanc = (m.caixinhaLanc || []).filter(x => x.fp !== fp); if (m.caixinhaLanc.length) m.transferido = round2(sum(m.caixinhaLanc, x => x.valor)); else { delete m.caixinhaLanc; delete m.transferido; } }); closeSheet(); toast('Lançamento apagado'); },
+  reabrirMes: ym => { putMes(ym, m => { delete m.fechado; delete m.poteReal; delete m.reservaReal; delete m.transferido; delete m.caixinhaLanc; }); closeSheet(); toast('Mês reaberto'); },
   asLancar: () => asLancar(),
   asFalar: () => { const ta = $('#as-txt'); if (ta) { ta.focus(); } const touch = matchMedia('(pointer: coarse)').matches; UI.asMsg = touch ? 'Toque no 🎤 do teclado e fale, por exemplo: “gastei 32 no almoço no Nubank e 18 de Uber”. Depois toque em Lançar.' : 'Use o ditado do computador: no Mac, aperte Fn duas vezes (ou 🎤 no teclado); no Windows, Win + H. Depois clique em Lançar.'; const p = document.querySelector('.asst .fh'); if (p) p.textContent = UI.asMsg; else render(); if (ta) setTimeout(() => ta.focus(), 50); },
   extrato: () => sheetExtrato(),
