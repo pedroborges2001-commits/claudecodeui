@@ -1,0 +1,1644 @@
+<title>Plano Financeiro</title>
+<style>
+:root{
+  --bg:#f2f2f7; --card:#ffffff; --card2:#f2f2f7; --elev:#ffffff;
+  --label:#000000; --label2:rgba(60,60,67,.64); --label3:rgba(60,60,67,.38);
+  --sep:rgba(60,60,67,.2); --fill:rgba(120,120,128,.12); --fill2:rgba(120,120,128,.2);
+  --blue:#007aff; --blue-tint:rgba(0,122,255,.12);
+  --pos:#248a3d; --neg:#d70015; --warn-t:#b25000;
+  --green-f:#34c759; --red-f:#ff3b30; --orange-f:#ff9500;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --grid:rgba(60,60,67,.12); --axis:rgba(60,60,67,.55);
+  --good:#0ca30c; --crit:#d03b3b; --warnc:#fab219;
+  --tab:rgba(249,249,249,.88); --scrim:rgba(0,0,0,.32);
+  --r-card:12px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --card:#1c1c1e; --card2:#2c2c2e; --elev:#2c2c2e;
+    --label:#ffffff; --label2:rgba(235,235,245,.62); --label3:rgba(235,235,245,.32);
+    --sep:rgba(84,84,88,.62); --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.34);
+    --blue:#0a84ff; --blue-tint:rgba(10,132,255,.2);
+    --pos:#30d158; --neg:#ff453a; --warn-t:#ff9f0a;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --grid:rgba(235,235,245,.1); --axis:rgba(235,235,245,.55);
+    --tab:rgba(24,24,26,.88); --scrim:rgba(0,0,0,.55);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --card:#1c1c1e; --card2:#2c2c2e; --elev:#2c2c2e;
+  --label:#ffffff; --label2:rgba(235,235,245,.62); --label3:rgba(235,235,245,.32);
+  --sep:rgba(84,84,88,.62); --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.34);
+  --blue:#0a84ff; --blue-tint:rgba(10,132,255,.2);
+  --pos:#30d158; --neg:#ff453a; --warn-t:#ff9f0a;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --grid:rgba(235,235,245,.1); --axis:rgba(235,235,245,.55);
+  --tab:rgba(24,24,26,.88); --scrim:rgba(0,0,0,.55);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--label);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.app{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:0 calc(96px + env(safe-area-inset-bottom,0px))}
+.lt{padding-top:14px;padding-bottom:6px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.lt h1{font-size:34px;line-height:1.1;font-weight:700;letter-spacing:.2px;margin:0;text-wrap:balance}
+.lt .sub{color:var(--label2);font-size:15px;margin-top:2px}
+.navbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:44px;margin-inline:-16px;padding-inline:8px;background:var(--tab);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid var(--sep)}
+.navbar .back{justify-self:start;background:none;border:0;color:var(--blue);font-size:17px;padding:8px;display:flex;align-items:center;gap:2px}
+.navbar .ttl{font-weight:600;font-size:17px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+.circle-btn{width:36px;height:36px;border-radius:50%;border:0;background:var(--blue-tint);color:var(--blue);display:grid;place-items:center;flex:none}
+.circle-btn svg{width:18px;height:18px}
+section{margin-top:22px}
+.gh{font-size:13px;font-weight:400;color:var(--label2);text-transform:uppercase;letter-spacing:.4px;margin:0 16px 7px;display:flex;justify-content:space-between;gap:8px}
+.gh a,.gh button{text-transform:none;letter-spacing:0;color:var(--blue);background:none;border:0;font-size:15px;padding:0}
+.gf{font-size:13px;color:var(--label2);margin:7px 16px 0;line-height:1.4}
+.group{background:var(--card);border-radius:var(--r-card);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:46px;padding:10px 16px;position:relative;background:none;border:0;width:100%;text-align:left}
+.row+.row::before,.row+.rowx::before,.rowx+.row::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--sep)}
+.row.ic+.row::before,.row+.row.ic::before{left:58px}
+button.row:active,.row.tap:active{background:var(--fill)}
+.row .grow{flex:1;min-width:0}
+.row .t{font-size:17px;overflow-wrap:anywhere}
+.row .d{font-size:13px;color:var(--label2);margin-top:1px;overflow-wrap:anywhere}
+.row .v{font-size:17px;text-align:right;white-space:nowrap}
+.row .vd{font-size:13px;color:var(--label2);text-align:right;white-space:nowrap}
+.chev{color:var(--label3);flex:none;width:8px;height:14px}
+.ico{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:17px;flex:none;background:var(--fill)}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .muted{color:var(--label2)} .warn{color:var(--warn-t)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--fill);color:var(--label2);white-space:nowrap}
+.pill.ok{background:rgba(52,199,89,.16);color:var(--pos)}
+.pill.bad{background:rgba(255,59,48,.14);color:var(--neg)}
+.pill.att{background:rgba(255,149,0,.16);color:var(--warn-t)}
+.pill.info{background:var(--blue-tint);color:var(--blue)}
+.check{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--label3);display:grid;place-items:center;flex:none;background:none;padding:0}
+.check.on{background:var(--green-f);border-color:var(--green-f)}
+.check.on::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.hero{background:var(--card);border-radius:16px;padding:18px 18px 16px}
+.hero .k{font-size:15px;color:var(--label2);font-weight:500}
+.hero .big{font-size:44px;font-weight:700;letter-spacing:-.5px;line-height:1.1;margin:4px 0 2px}
+.hero .s{font-size:15px;color:var(--label2)}
+.bar{height:8px;border-radius:99px;background:var(--fill);overflow:hidden;margin-top:12px}
+.bar>i{display:block;height:100%;border-radius:99px;background:var(--blue)}
+.bar>i.over{background:var(--red-f)}
+.bar>i.good{background:var(--green-f)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{background:var(--card);border-radius:var(--r-card);padding:12px 14px;min-height:92px;display:flex;flex-direction:column;justify-content:space-between;border:0;text-align:left}
+.tile .k{font-size:13px;color:var(--label2);font-weight:500}
+.tile .v{font-size:22px;font-weight:700;letter-spacing:-.2px;margin-top:6px}
+.tile .s{font-size:12px;color:var(--label2);margin-top:2px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;border-radius:12px;border:0;background:var(--blue);color:#fff;font-weight:600;font-size:17px;padding:0 16px}
+.btn.tint{background:var(--blue-tint);color:var(--blue)}
+.btn.danger{background:rgba(255,59,48,.14);color:var(--neg)}
+.btn.sm{min-height:36px;font-size:15px;width:auto;border-radius:18px;padding:0 14px}
+.btn:disabled{opacity:.45}
+.btns{display:grid;gap:10px}
+.seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;gap:2px}
+.seg button{flex:1;border:0;background:none;border-radius:7px;padding:6px 8px;font-size:13px;font-weight:500;min-height:30px;white-space:nowrap}
+.seg button.on{background:var(--elev);box-shadow:0 1px 3px rgba(0,0,0,.14),0 0 0 .5px rgba(0,0,0,.04);font-weight:600}
+.mswitch{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r-card);padding:4px}
+.mswitch button{background:none;border:0;color:var(--blue);width:44px;height:40px;border-radius:10px;display:grid;place-items:center}
+.mswitch button:disabled{color:var(--label3)}
+.mswitch .m{font-weight:600;font-size:17px}
+.chart-card{background:var(--card);border-radius:var(--r-card);padding:14px 12px 10px}
+.chart-card h4{margin:0 4px 2px;font-size:15px;font-weight:600}
+.chart-card .cs{margin:0 4px 8px;font-size:13px;color:var(--label2)}
+.chart{position:relative;width:100%;touch-action:pan-y}
+.chart svg{display:block;overflow:visible}
+.chart .g{stroke:var(--grid);stroke-width:1}
+.chart .g0{stroke:var(--axis);stroke-width:1}
+.chart .yt,.chart .xt{fill:var(--label2);font-size:11px;font-variant-numeric:tabular-nums}
+.chart .lbl{fill:var(--label);font-size:11px;font-weight:600}
+.chart .xh{stroke:var(--label3);stroke-width:1}
+.tip{position:absolute;pointer-events:none;background:var(--elev);color:var(--label);border-radius:10px;padding:8px 10px;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.18);min-width:130px;z-index:3;line-height:1.45}
+.tip b{display:block;font-size:12px;margin-bottom:2px}
+.tip .tr{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.tip .tr span:first-child{display:flex;align-items:center;gap:5px;color:var(--label2)}
+.sw-dot{width:9px;height:9px;border-radius:2px;display:inline-block;flex:none}
+.sw-line{width:14px;height:0;border-top:2px solid;display:inline-block;flex:none}
+.sw-dash{width:14px;height:0;border-top:2px dashed;display:inline-block;flex:none}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 4px 0;font-size:12px;color:var(--label2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.tbl-wrap{overflow-x:auto;background:var(--card);border-radius:var(--r-card)}
+table.t{border-collapse:collapse;font-size:13px;width:100%;font-variant-numeric:tabular-nums}
+table.t th,table.t td{padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:.5px solid var(--sep)}
+table.t th:first-child,table.t td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+table.t thead th{color:var(--label2);font-weight:500;font-size:12px}
+table.t tr.tot td{font-weight:700}
+table.t tr:last-child td{border-bottom:0}
+table.t tr.cur td{background:var(--blue-tint)}
+table.t tr.cur td:first-child{background:color-mix(in srgb,var(--card),var(--blue) 12%)}
+.catbar{display:grid;grid-template-columns:30px 1fr auto;gap:4px 10px;align-items:center;padding:8px 16px}
+.catbar .nm{font-size:15px}
+.catbar .tr2{grid-column:2/4;height:6px;border-radius:99px;background:var(--fill);overflow:hidden}
+.catbar .tr2 i{display:block;height:100%;background:var(--s1);border-radius:99px}
+.note{background:var(--card);border-radius:var(--r-card);padding:12px 16px;font-size:15px;color:var(--label2);line-height:1.45}
+.note b{color:var(--label)}
+.alert{display:flex;gap:10px;align-items:flex-start;background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:15px;line-height:1.4}
+.alert .dot{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff}
+.alert.crit .dot{background:var(--crit)} .alert.warn .dot{background:var(--warnc);color:#000} .alert.good .dot{background:var(--good)} .alert.info .dot{background:var(--blue)}
+.alerts{display:grid;gap:8px}
+.banner{margin-top:12px;background:var(--blue-tint);color:var(--label);border-radius:var(--r-card);padding:10px 14px;font-size:14px;line-height:1.4}
+.empty{text-align:center;color:var(--label2);padding:28px 16px;font-size:15px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--tab);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--sep);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar nav{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tabbar button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;color:var(--label2);font-size:10px;font-weight:500}
+.tabbar button svg{width:26px;height:26px}
+.tabbar button.on{color:var(--blue)}
+#sheet{position:fixed;inset:0;z-index:50}
+#sheet .sh-bg{position:absolute;inset:0;background:var(--scrim);opacity:0;transition:opacity .25s}
+#sheet .sh-panel{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:640px;max-height:92%;background:var(--bg);border-radius:14px 14px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+#sheet.open .sh-bg{opacity:1}
+#sheet.open .sh-panel{transform:none}
+.sh-grab{width:36px;height:5px;border-radius:3px;background:var(--label3);margin:6px auto 0}
+.sh-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:6px 8px 8px}
+.sh-head .sh-t{font-weight:600;font-size:17px;text-align:center}
+.sh-head button{background:none;border:0;color:var(--blue);font-size:17px;padding:8px}
+.sh-head .sh-ok{justify-self:end;font-weight:600}
+.sh-body{overflow-y:auto;padding:4px 16px 24px;-webkit-overflow-scrolling:touch}
+.fg{background:var(--card);border-radius:var(--r-card);overflow:hidden;margin-top:14px}
+.f{display:flex;align-items:center;gap:10px;padding:0 16px;min-height:48px;position:relative}
+.f+.f::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--sep)}
+.f label{flex:none;font-size:17px;min-width:110px}
+.f .in{flex:1;min-width:0;border:0;background:none;padding:12px 0;text-align:right;font-size:17px;outline:none}
+.f select.in{appearance:none;-webkit-appearance:none;direction:rtl;color:var(--label2)}
+.f textarea.in{text-align:left;min-height:90px;resize:vertical}
+.f.col{flex-direction:column;align-items:stretch;gap:0;padding-top:10px}
+.f.col label{font-size:13px;color:var(--label2)}
+.f.col .in{text-align:left}
+.fh{font-size:13px;color:var(--label2);margin:7px 16px 0;line-height:1.4}
+.amount{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:14px 0 4px}
+.amount span{font-size:28px;color:var(--label2);font-weight:600}
+.amount input{border:0;background:none;font-size:48px;font-weight:700;width:100%;max-width:280px;text-align:center;outline:none;letter-spacing:-.5px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:12px}
+.chip{border:0;background:var(--fill);border-radius:999px;padding:7px 12px;font-size:15px;display:inline-flex;gap:6px;align-items:center}
+.chip.on{background:var(--blue);color:#fff}
+.sw{position:relative;display:inline-block;width:51px;height:31px;flex:none}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw span{position:absolute;inset:0;background:var(--fill2);border-radius:99px;transition:background .2s}
+.sw span::after{content:"";position:absolute;width:27px;height:27px;left:2px;top:2px;background:#fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .2s}
+.sw input:checked+span{background:var(--green-f)}
+.sw input:checked+span::after{transform:translateX(20px)}
+.sw input:focus-visible+span{outline:2px solid var(--blue);outline-offset:2px}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--elev);color:var(--label);padding:10px 16px;border-radius:999px;font-size:15px;font-weight:500;box-shadow:0 6px 24px rgba(0,0,0,.2);opacity:0;transition:all .25s;z-index:60;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.calc-out{background:var(--card);border-radius:var(--r-card);padding:14px 16px;margin-top:14px}
+.calc-out .k{font-size:13px;color:var(--label2)}
+.calc-out .big{font-size:30px;font-weight:700;margin:2px 0 6px}
+.calc-out p{margin:6px 0 0;font-size:15px;color:var(--label2);line-height:1.45}
+.prose{background:var(--card);border-radius:var(--r-card);padding:14px 16px;font-size:16px;line-height:1.5}
+.prose h3{font-size:17px;margin:16px 0 4px}
+.prose h3:first-child{margin-top:0}
+.prose p,.prose li{color:var(--label2);max-width:65ch}
+.prose p{margin:4px 0 8px}
+.prose ol,.prose ul{padding-left:20px;margin:4px 0 8px}
+.prose b{color:var(--label)}
+.dl{display:grid;gap:0}
+.dl .row .t{font-weight:600}
+.onb{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 12px) 24px calc(env(safe-area-inset-bottom,0px) + 20px)}
+.onb .skip{align-self:flex-end;background:none;border:0;color:var(--blue);font-size:17px;padding:8px}
+.onb .pg{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:520px;margin:0 auto;width:100%}
+.onb .art{width:96px;height:96px;border-radius:24px;display:grid;place-items:center;margin-bottom:24px;color:#fff}
+.onb .art svg{width:52px;height:52px}
+.onb h2{font-size:30px;line-height:1.15;margin:0 0 12px;text-wrap:balance}
+.onb p{font-size:17px;color:var(--label2);line-height:1.5;margin:0 0 10px}
+.onb .dots{display:flex;gap:8px;justify-content:center;margin:18px 0}
+.onb .dots i{width:8px;height:8px;border-radius:50%;background:var(--label3)}
+.onb .dots i.on{background:var(--label)}
+.onb .foot{max-width:520px;margin:0 auto;width:100%}
+.loading{display:grid;place-items:center;min-height:60vh;color:var(--label2)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:380px){.hero .big{font-size:38px}.tile .v{font-size:19px}}
+</style>
+
+<div class="app" id="app"><div class="loading">Carregando…</div></div>
+<div class="tabbar" id="tabbar"></div>
+<div id="sheet" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="onb" hidden></div>
+
+<script>
+"use strict";
+/* ===================== utilidades ===================== */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const BRL = new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'});
+const fmt = v => BRL.format(Math.abs(v) < 0.005 ? 0 : (v || 0));
+const fmt0 = v => { const r = Math.round(v || 0); return (r < 0 ? '−' : '') + 'R$ ' + Math.abs(r).toLocaleString('pt-BR'); };
+const fmtS = v => (v > 0.004 ? '+' : '') + fmt(v);
+const pc = (v, d = 1) => ((v || 0) * 100).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d}) + '%';
+const nf = (v, d = 2) => (v || 0).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
+const COMPACT = new Intl.NumberFormat('pt-BR', {notation:'compact', maximumFractionDigits:1});
+const kfmt = v => COMPACT.format(v);
+function parseMoney(s){
+  if (typeof s === 'number') return s;
+  s = String(s || '').trim().replace(/R\$|\s|%/g, '').replace('−', '-');
+  if (!s) return NaN;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  return Number(s);
+}
+const moneyIn = v => (v == null || v === '' || isNaN(v)) ? '' : nf(+v, 2);
+const sum = (arr, f = x => x) => arr.reduce((s, x) => s + (+f(x) || 0), 0);
+const MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const MESL = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DOW = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+const DOWS = ['dom','seg','ter','qua','qui','sex','sáb'];
+const ymOf = d => String(d).slice(0, 7);
+function ymAdd(ym, n){ let [y, m] = ym.split('-').map(Number); m += n; y += Math.floor((m - 1) / 12); m = ((m - 1) % 12 + 12) % 12 + 1; return y + '-' + pad(m); }
+function ymDiff(a, b){ const [ay, am] = a.split('-').map(Number), [by, bm] = b.split('-').map(Number); return (by - ay) * 12 + (bm - am); }
+const ymLabel = ym => MES[+ym.slice(5) - 1] + '/' + ym.slice(2, 4);
+const ymLong = ym => MESL[+ym.slice(5) - 1] + ' de ' + ym.slice(0, 4);
+function daysIn(ym){ const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+function dParse(s){ const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); }
+function dFmt(t){ const d = new Date(t); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
+const dAdd = (s, n) => dFmt(dParse(s) + n * 864e5);
+const dDiff = (a, b) => Math.round((dParse(b) - dParse(a)) / 864e5);
+const dLabel = s => s.slice(8, 10) + '/' + s.slice(5, 7);
+const dLabelY = s => s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(2, 4);
+const dow = s => new Date(dParse(s)).getUTCDay();
+function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+const ymd = (ym, day) => ym + '-' + pad(Math.max(1, Math.min(+day || 1, daysIn(ym))));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const clone = o => JSON.parse(JSON.stringify(o == null ? {} : o));
+const isSet = v => v != null && v !== '' && !(typeof v === 'number' && isNaN(v));
+function dayLong(s){ const [y, m, d] = s.split('-').map(Number); return DOW[dow(s)] + ', ' + d + ' de ' + MESL[m - 1]; }
+
+const ICON = {
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>',
+  pen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 17h2M11 17h2"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  more:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  left:'<svg viewBox="0 0 12 20" width="12" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>',
+  right:'<svg viewBox="0 0 12 20" width="12" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 8 8-8 8"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1 1 6 6-6 6"/></svg>',
+  wallet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2Z"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor"/></svg>',
+  piggy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9.5c1 .3 2 1.1 2 2.5M4.5 11A6.5 5.5 0 0 1 17 9h2v4l-2 1.2V18h-3v-1.5H9V18H6v-2.3A5.4 5.4 0 0 1 4.5 11Z"/><path d="M9 7.5a2.5 2.5 0 1 1 4.5-1.5"/></svg>'
+};
+
+/* ===================== categorias e textos padrão ===================== */
+const DEFAULT_CATS = [
+  {id:'comer', nome:'Comer fora/delivery', emoji:'🍔'},
+  {id:'mercado', nome:'Mercado extra', emoji:'🛒'},
+  {id:'lazer', nome:'Lazer', emoji:'🎬'},
+  {id:'transporte', nome:'Transporte/app', emoji:'🚕'},
+  {id:'saude', nome:'Saúde/farmácia', emoji:'💊'},
+  {id:'cuidados', nome:'Cuidados pessoais', emoji:'💈'},
+  {id:'roupas', nome:'Roupas', emoji:'👕'},
+  {id:'presentes', nome:'Presentes', emoji:'🎁'},
+  {id:'casa', nome:'Casa', emoji:'🏠'},
+  {id:'outros', nome:'Outros', emoji:'📦'}
+];
+const DEFAULT_CFG = {
+  inicio: ymOf(todayStr()), meses: 12,
+  saldoContaInicial: 0, poteInicial: 0, reservaInicial: 0,
+  receb: {regra:'intervalo', ancora:'', intervalo:14, diasFixos:[5, 20], valorPadrao:0, primeiros:[], regraFeriado:'dia', feriados:[]},
+  gastoDia: 50, tetoPct: 30, metaMeses: 6, rendimento: 0.85, colchao: 0, diasMes: 30.4, usarReal: true,
+  limiteConta: 0,
+  cartoes: [], categorias: DEFAULT_CATS,
+  placa: {finalPlaca:''},
+  ajuste: null,
+  cenarios: {pouco:{gasto:80, cortes:0}, muito:{gasto:40, cortes:0}, prazo:24},
+  tutorialVisto: false
+};
+
+/* ===================== armazenamento (db do Artifact ou navegador) ===================== */
+const COLS = ['cfg','fixas','recorrentes','anuais','extras','diario','meses','receb','pend'];
+const S = {mode:'loading', data:Object.fromEntries(COLS.map(c => [c, {}])), db:null, ready:false, err:null};
+const LS_KEY = 'plano-financeiro-v1';
+function lsLoad(){ try { const j = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); if (j) for (const c of COLS) S.data[c] = j[c] || {}; } catch (e) {} }
+function lsSave(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S.data)); } catch (e) {} }
+const writeChains = {};
+function queued(key, fn){ const p = (writeChains[key] || Promise.resolve()).catch(() => {}).then(fn); writeChains[key] = p; return p; }
+function dbErr(e){
+  const code = e && e.code;
+  if (code === 'quota_exceeded') toast('Limite de registros atingido. Apague lançamentos antigos.');
+  else if (code === 'invalid_argument') toast('Sem permissão para salvar aqui.');
+  else toast('Não foi possível salvar. Tente de novo.');
+  console.warn(e);
+}
+async function put(c, id, data){
+  S.data[c] = Object.assign({}, S.data[c], {[id]: data});
+  scheduleRender();
+  if (S.mode === 'db') {
+    try { await queued(c + '/' + id, () => S.db.collection(c).doc(id).set(data)); }
+    catch (e) { if (e && e.code === 'unavailable') { await new Promise(r => setTimeout(r, 600 + Math.random() * 600)); try { await S.db.collection(c).doc(id).set(data); } catch (e2) { dbErr(e2); } } else dbErr(e); }
+  } else lsSave();
+}
+async function del(c, id){
+  const m = Object.assign({}, S.data[c]); delete m[id]; S.data[c] = m; scheduleRender();
+  if (S.mode === 'db') { try { await queued(c + '/' + id, () => S.db.collection(c).doc(id).delete()); } catch (e) { dbErr(e); } }
+  else lsSave();
+}
+function C(){
+  const c = Object.assign({}, DEFAULT_CFG, S.data.cfg.main || {});
+  c.receb = Object.assign({}, DEFAULT_CFG.receb, c.receb || {});
+  c.cenarios = Object.assign({}, DEFAULT_CFG.cenarios, c.cenarios || {});
+  c.placa = Object.assign({}, DEFAULT_CFG.placa, c.placa || {});
+  if (!Array.isArray(c.categorias) || !c.categorias.length) c.categorias = DEFAULT_CATS;
+  if (!Array.isArray(c.cartoes)) c.cartoes = [];
+  return c;
+}
+const hasCfg = () => !!S.data.cfg.main;
+function saveCfg(patch){ return put('cfg', 'main', Object.assign(clone(C()), patch)); }
+function putMes(ym, fn){ const m = clone(S.data.meses[ym] || {}); fn(m); return put('meses', ym, m); }
+
+async function initStore(){
+  let db = null;
+  try { db = (window.claude && typeof window.claude.use === 'function') ? await window.claude.use('db') : null; } catch (e) { db = null; }
+  if (!db) { S.mode = 'local'; lsLoad(); S.ready = true; scheduleRender(); maybeOnboard(); return; }
+  S.db = db; S.mode = 'db';
+  const pending = new Set(COLS);
+  const done = c => { if (pending.delete(c) && !pending.size) { S.ready = true; maybeOnboard(); } scheduleRender(); };
+  for (const c of COLS) {
+    try {
+      db.collection(c).onSnapshot(snap => {
+        const m = {}; for (const d of snap.docs) m[d.id] = d.data(); S.data[c] = m; done(c);
+      }, err => { S.err = err && err.code; console.warn(c, err); done(c); });
+    } catch (e) { console.warn(e); done(c); }
+  }
+}
+
+/* ===================== motor de cálculo ===================== */
+const PAGS_FIXOS = [{id:'debito', nome:'Débito/Pix'}, {id:'dinheiro', nome:'Dinheiro'}];
+function pagamentos(cfg){ return [PAGS_FIXOS[0]].concat(cfg.cartoes.map(k => ({id:k.id, nome:k.nome, cartao:true})), [PAGS_FIXOS[1]]); }
+const cardById = (cfg, id) => cfg.cartoes.find(k => k.id === id);
+const catById = (cfg, id) => cfg.categorias.find(k => k.id === id) || {id, nome:id || 'Sem categoria', emoji:'•'};
+const planMonths = cfg => Array.from({length: Math.max(1, +cfg.meses || 12)}, (_, i) => ymAdd(cfg.inicio, i));
+const list = c => Object.entries(S.data[c]).map(([id, v]) => Object.assign({id}, v));
+const byOrder = (a, b) => ((+a.ordem || 0) - (+b.ordem || 0)) || String(a.nome || '').localeCompare(String(b.nome || ''));
+
+function shiftDate(cfg, s){
+  const fer = cfg.receb.feriados || [];
+  let t = s;
+  for (let i = 0; i < 10; i++) {
+    const w = dow(t);
+    if (fer.includes(t) || (cfg.receb.regraFeriado === 'util' && (w === 0 || w === 6))) t = dAdd(t, 1); else break;
+  }
+  return t;
+}
+function recebimentos(cfg, endYm){
+  const r = cfg.receb, out = [];
+  const end = ymd(endYm, 31);
+  const startYm = cfg.inicio;
+  for (let n = 0; n < 500; n++) {
+    let prev;
+    if (r.regra === 'fixos') {
+      const dias = (r.diasFixos || []).map(Number).filter(x => x > 0).sort((a, b) => a - b);
+      if (!dias.length) break;
+      prev = ymd(ymAdd(startYm, Math.floor(n / dias.length)), dias[n % dias.length]);
+    } else {
+      if (!r.ancora || !(+r.intervalo > 0)) break;
+      prev = dAdd(r.ancora, n * (+r.intervalo));
+    }
+    if (prev > end) break;
+    const o = S.data.receb['r' + (n + 1)] || {};
+    const data = o.data || shiftDate(cfg, prev);
+    const padrao = (Array.isArray(r.primeiros) && isSet(r.primeiros[n])) ? +r.primeiros[n] : (+r.valorPadrao || 0);
+    const real = isSet(o.valor);
+    out.push({n:n + 1, id:'r' + (n + 1), prevista:prev, data, ym:ymOf(data), padrao, valor: real ? +o.valor : padrao, real, recebido: !!o.recebido, obs:o.obs || ''});
+  }
+  return out;
+}
+function extraParcelas(e, rec){
+  const n = Math.max(1, Math.round(+e.parcelas || 1)), out = [];
+  if (!e.mesInicio) return out;
+  for (let i = 0; i < n; i++) {
+    const ym = ymAdd(e.mesInicio, i);
+    const valor = (Array.isArray(e.valores) && isSet(e.valores[i])) ? +e.valores[i] : (+e.total || 0) / n;
+    let data;
+    if (!(+e.dia)) { const rs = rec.filter(r => r.ym === ym); data = rs.length ? rs[rs.length - 1].data : ymd(ym, 31); }
+    else data = ymd(ym, +e.dia);
+    out.push({i, ym, valor, data, pago: !!(e.pagos && e.pagos[i])});
+  }
+  return out;
+}
+function placaMes(final){
+  const f = String(final).trim(); if (f === '') return null;
+  const d = +f.slice(-1);
+  return d === 1 || d === 2 ? 7 : d === 3 || d === 4 ? 8 : d === 5 || d === 6 ? 9 : d === 7 || d === 8 ? 10 : d === 9 ? 11 : 12;
+}
+function anualMes(cfg, a){
+  if (a.placaAuto && a.mes) { const m = placaMes(cfg.placa.finalPlaca); if (m) return a.mes.slice(0, 4) + '-' + pad(m); }
+  return a.mes;
+}
+function dueOf(card, dateStr){
+  const ym = ymOf(dateStr), day = +dateStr.slice(8);
+  const fecha = +card.fecha || 1, vence = +card.vence || 10;
+  const closeYm = day >= fecha ? ymAdd(ym, 1) : ym;
+  const dueYm = vence > fecha ? closeYm : ymAdd(closeYm, 1);
+  return {closeYm, dueYm, closeDate: ymd(closeYm, fecha), dueDate: ymd(dueYm, vence)};
+}
+
+function compute(opts){
+  opts = opts || {};
+  const cfg = opts.cfg || C();
+  const g = isSet(opts.gastoDia) ? +opts.gastoDia : +cfg.gastoDia || 0;
+  const pure = !!opts.pure;
+  const useReal = !pure && cfg.usarReal !== false;
+  const months = planMonths(cfg);
+  const start = months[0], end = months[months.length - 1];
+  const today = todayStr(), tYm = ymOf(today);
+  const rec = recebimentos(cfg, end);
+  const recPlan = rec.filter(x => x.ym >= start && x.ym <= end);
+  const fixas = list('fixas').filter(f => f.ativa !== false).sort(byOrder);
+  const recs = list('recorrentes').filter(f => f.ativa !== false).sort(byOrder);
+  const anuais = list('anuais').map(a => Object.assign({}, a, {mesCalc: anualMes(cfg, a)})).sort((a, b) => String(a.mesCalc).localeCompare(String(b.mesCalc)));
+  let extras = list('extras');
+  if (opts.extraOverride) extras = extras.map(e => e.id === opts.extraOverride.id ? Object.assign({}, e, opts.extraOverride, {valores:null}) : e);
+  const diario = pure ? [] : list('diario').filter(d => d.data && d.data >= ymd(start, 1) && d.data <= ymd(end, 31));
+  const r = (+cfg.rendimento || 0) / 100;
+  const fixTotal = sum(fixas, f => f.valor);
+  const recTotal = sum(recs, f => f.valor);
+  const diasMes = +cfg.diasMes || 30.4;
+  const custoVida = fixTotal + recTotal + g * diasMes;
+  const meta = (+cfg.metaMeses || 0) * custoVida;
+  const rendaMedia = sum(recPlan, x => x.valor) / months.length;
+  const teto = (+cfg.tetoPct || 0) / 100 * rendaMedia;
+  const anuaisPlano = anuais.filter(a => a.mesCalc >= start && a.mesCalc <= end);
+  const antigoTotal = sum(cfg.cartoes, k => k.antigo);
+  const extrasParc = extras.map(e => ({e, ps: extraParcelas(e, rec)}));
+  let poteIni = +cfg.poteInicial || 0, resIni = +cfg.reservaInicial || 0;
+  const rows = [];
+  months.forEach((ym, i) => {
+    const md = (!pure && S.data.meses[ym]) || {};
+    const recM = rec.filter(x => x.ym === ym);
+    const entReceb = sum(recM, x => x.valor);
+    const extM = [];
+    extrasParc.forEach(({e, ps}) => ps.forEach(p => { if (p.ym === ym) extM.push(Object.assign({}, p, {e})); }));
+    const entExtra = sum(extM.filter(x => x.e.tipo === 'entrada'), x => x.valor);
+    const saiExtra = sum(extM.filter(x => x.e.tipo !== 'entrada'), x => x.valor);
+    const dM = diario.filter(x => ymOf(x.data) === ym);
+    const livreReal = sum(dM.filter(x => !x.extra), x => x.valor);
+    const imprev = sum(dM.filter(x => x.extra), x => x.valor);
+    const dias = daysIn(ym), orc = g * dias;
+    let livre = orc, livreModo = 'plano';
+    if (useReal) {
+      if (ym < tYm) { livre = livreReal; livreModo = 'real'; }
+      else if (ym === tYm) { livre = livreReal + g * (dias - (+today.slice(8))); livreModo = 'parcial'; }
+    }
+    const fixV = f => (md.fixasValor && isSet(md.fixasValor[f.id])) ? +md.fixasValor[f.id] : (+f.valor || 0);
+    const fixM = sum(fixas, fixV);
+    const antigas = i === 0 ? antigoTotal : 0;
+    const saidas = fixM + recTotal + antigas + livre + saiExtra + imprev;
+    const colchao = i === 0 ? (+cfg.colchao || 0) : 0;
+    const entradas = entReceb + entExtra;
+    const sobra = entradas - saidas - colchao;
+    const anuaisMes = sum(anuaisPlano.filter(a => a.mesCalc === ym), a => a.valor);
+    const anuaisResta = sum(anuaisPlano.filter(a => a.mesCalc >= ym), a => a.valor);
+    const poteRend = poteIni * r, poteAp = poteIni + poteRend;
+    const poteDep = Math.min(Math.max(0, anuaisResta - poteAp), Math.max(sobra, 0));
+    let poteFim = poteAp + poteDep - anuaisMes, falta = 0;
+    if (poteFim < 0) { falta = -poteFim; poteFim = 0; }
+    const resRend = resIni * r, resDep = sobra - poteDep;
+    let resFim = resIni + resRend + resDep - falta;
+    let real = false;
+    if (!pure && isSet(md.poteReal)) { poteFim = +md.poteReal; real = true; }
+    if (!pure && isSet(md.reservaReal)) { resFim = +md.reservaReal; real = true; }
+    rows.push({ym, i, dias, recM, entReceb, entExtra, entradas, fixM, fixV, recTotal, antigas, orc, livre, livreReal, livreModo, imprev, saiExtra, extM, dM, saidas, colchao, sobra,
+      anuaisMes, anuaisResta, poteIni, poteRend, poteDep, falta, poteFim, resIni, resRend, resDep, resFim, total: poteFim + resFim, pctMeta: meta ? resFim / meta : 0, md, real});
+    poteIni = poteFim; resIni = resFim;
+  });
+  const model = {cfg, g, pure, useReal, months, start, end, today, tYm, rec, recPlan, fixas, recs, anuais, anuaisPlano, extras, extrasParc, diario, rows, r,
+    fixTotal, recTotal, custoVida, meta, rendaMedia, teto, antigoTotal, diasMes};
+  model.fat = faturas(model);
+  return model;
+}
+function faturas(M){
+  const {cfg, months, recs, diario} = M;
+  const map = {};
+  const add = (cid, ym, v, item) => { const k = cid + '|' + ym; (map[k] = map[k] || {prev:0, items:[]}); map[k].prev += v; map[k].items.push(Object.assign({valor:v}, item)); };
+  cfg.cartoes.forEach(k => { if (+k.antigo) add(k.id, months[0], +k.antigo, {desc:'Fatura já fechada e compras antes do plano', tipo:'antigo'}); });
+  months.forEach(ym => recs.forEach(rc => { const k = cardById(cfg, rc.cartao); if (!k) return; const data = ymd(ym, rc.dia); add(k.id, dueOf(k, data).dueYm, +rc.valor || 0, {desc:rc.nome, data, tipo:'recorrente'}); }));
+  diario.forEach(d => { const k = cardById(cfg, d.pag); if (!k) return; add(k.id, dueOf(k, d.data).dueYm, +d.valor || 0, {desc:d.desc || catById(cfg, d.cat).nome, data:d.data, tipo:'diario'}); });
+  return months.map(ym => {
+    const row = M.rows.find(x => x.ym === ym);
+    const md = (!M.pure && S.data.meses[ym]) || {};
+    const por = {};
+    let total = 0, prevTotal = 0;
+    cfg.cartoes.forEach(k => {
+      const e = map[k.id + '|' + ym] || {prev:0, items:[]};
+      const f = (md.faturas && md.faturas[k.id]) || {};
+      const valor = isSet(f.valor) ? +f.valor : e.prev;
+      por[k.id] = {prev:e.prev, items:e.items, real:isSet(f.valor), valor, pago:!!f.pago, dueDate: ymd(ym, k.vence)};
+      total += valor; prevTotal += e.prev;
+    });
+    return {ym, por, total, prevTotal, pct: row && row.entradas ? total / row.entradas : 0, teto:M.teto, espaco:M.teto - total};
+  });
+}
+/* compras no cartão feitas no mês (competência) */
+function comprasCartaoMes(M, ym){ return sum(M.diario.filter(d => ymOf(d.data) === ym && cardById(M.cfg, d.pag)), d => d.valor); }
+
+function calendario(M){
+  const {cfg, months, rows, rec, fixas, fat, today} = M;
+  const start = ymd(months[0], 1), end = ymd(months[months.length - 1], 31);
+  const ev = {};
+  const add = (d, e) => { if (d < start || d > end) return; (ev[d] = ev[d] || []).push(e); };
+  rec.forEach(r => add(r.data, {desc:'Recebimento ' + pad(r.n), valor:r.valor, kind:'receb', id:r.id, done:r.recebido}));
+  rows.forEach(row => {
+    const ym = row.ym, md = row.md || {};
+    fixas.forEach(f => {
+      const dias = (Array.isArray(f.dias) && f.dias.length ? f.dias : [f.dia || 1]).map(Number);
+      const v = row.fixV(f) / dias.length;
+      dias.forEach(dd => add(ymd(ym, dd), {desc:f.nome + (dias.length > 1 ? ' (' + (dias.indexOf(dd) + 1) + '/' + dias.length + ')' : ''), valor:-v, kind:'fixa', id:f.id, ym, done: !!(md.fixasPagas && md.fixasPagas[f.id])}));
+    });
+    const fr = fat.find(x => x.ym === ym);
+    if (fr) cfg.cartoes.forEach(k => { const p = fr.por[k.id]; if (p && p.valor) add(p.dueDate, {desc:'Fatura ' + k.nome, valor:-p.valor, kind:'fatura', id:k.id, ym, done:p.pago}); });
+    row.extM.forEach(p => add(p.data, {desc:p.e.nome + (p.e.parcelas > 1 ? ' (' + (p.i + 1) + '/' + p.e.parcelas + ')' : ''), valor: p.e.tipo === 'entrada' ? p.valor : -p.valor, kind:'extra', id:p.e.id, i:p.i, done:p.pago}));
+    const last = ymd(ym, 31);
+    const transf = isSet(md.transferido) ? +md.transferido : (row.poteDep + row.resDep);
+    if (Math.abs(transf) > 0.004) add(last, {desc: transf >= 0 ? 'Mandar sobra para as caixinhas' : 'Resgatar das caixinhas', valor:-transf, kind:'transfer', ym, done: isSet(md.transferido)});
+  });
+  const debDiario = {};
+  M.diario.forEach(d => { if (!cardById(cfg, d.pag)) debDiario[d.data] = (debDiario[d.data] || 0) + (+d.valor || 0); });
+  const allDiario = {};
+  M.diario.forEach(d => { allDiario[d.data] = (allDiario[d.data] || 0) + (+d.valor || 0); });
+  const aj = cfg.ajuste && cfg.ajuste.data && isSet(cfg.ajuste.valor) ? cfg.ajuste : null;
+  let saldo = +cfg.saldoContaInicial || 0;
+  const days = [];
+  for (let d = start; d <= end; d = dAdd(d, 1)) {
+    const evs = (ev[d] || []).slice();
+    let livre;
+    if (!M.useReal) livre = M.g;
+    else if (d < today) livre = debDiario[d] || 0;
+    else if (d === today) livre = (debDiario[d] || 0) + Math.max(0, M.g - (allDiario[d] || 0));
+    else livre = M.g;
+    if (livre) evs.push({desc: d < today && M.useReal ? 'Gastos no débito (Diário)' : 'Gasto livre previsto', valor:-livre, kind:'livre'});
+    saldo += sum(evs, e => e.valor);
+    let ajustado = false;
+    if (aj && aj.data === d) { saldo = +aj.valor; ajustado = true; }
+    days.push({d, ym:ymOf(d), evs, saldo, ajustado});
+  }
+  const minPorMes = {};
+  days.forEach(x => { const m = minPorMes[x.ym]; if (!m || x.saldo < m.saldo) minPorMes[x.ym] = x; });
+  return {days, minPorMes};
+}
+
+/* resumo do gasto livre de um mês */
+function livreStatus(M, ym){
+  const today = M.today, dias = daysIn(ym), orc = M.g * dias;
+  const dM = M.diario.filter(x => ymOf(x.data) === ym && !x.extra);
+  const gasto = sum(dM, x => x.valor);
+  const restantes = ym === ymOf(today) ? dias - (+today.slice(8)) + 1 : ym > ymOf(today) ? dias : 0;
+  const disp = orc - gasto;
+  const hoje = sum(dM.filter(x => x.data === today), x => x.valor);
+  return {orc, gasto, disp, restantes, porDia: restantes > 0 ? disp / restantes : 0, hoje, dias};
+}
+function viewYm(M){ return M.tYm < M.start ? M.start : M.tYm > M.end ? M.end : M.tYm; }
+
+/* cenários: e se eu gastar mais ou menos por dia */
+function cenarioGasto(g){
+  const M = compute({pure:true, gastoDia:g});
+  const ini = (+M.cfg.poteInicial || 0) + (+M.cfg.reservaInicial || 0);
+  let c = ini, bate = null;
+  M.rows.forEach(r => { c += r.sobra - r.anuaisMes; if (bate == null && c >= M.meta) bate = r.ym; });
+  const sobraMedia = M.rendaMedia - M.fixTotal - M.recTotal - g * M.diasMes;
+  const anuaisMedia = sum(M.anuaisPlano, a => a.valor) / M.months.length;
+  if (bate == null) {
+    const per = sobraMedia - anuaisMedia, need = M.meta - c;
+    bate = per > 0 ? ymAdd(M.end, Math.ceil(need / per)) : null;
+  }
+  return {g, sobraMedia, guardado:c, meta:M.meta, pct: M.meta ? c / M.meta : 0, bate};
+}
+/* calculadora de patrimônio */
+function projPatrimonio(M, gasto, cortes, prazo, rMes){
+  const anuaisMedia = sum(M.anuaisPlano, a => a.valor) / M.months.length;
+  const guarda = M.rendaMedia - M.fixTotal - M.recTotal - gasto * M.diasMes - anuaisMedia + (+cortes || 0);
+  const extrasTot = sum(M.extras.filter(e => e.tipo !== 'entrada'), e => e.total) - sum(M.extras.filter(e => e.tipo === 'entrada'), e => e.total);
+  const inicio = (+M.cfg.poteInicial || 0) + (+M.cfg.reservaInicial || 0) - M.antigoTotal - extrasTot;
+  const serie = [inicio]; let p = inicio;
+  for (let k = 1; k <= prazo; k++) { p = p * (1 + rMes) + guarda; serie.push(p); }
+  const bolso = inicio + guarda * prazo;
+  return {guarda, inicio, serie, fim:p, bolso, rend:p - bolso, pctRenda: M.rendaMedia ? guarda / M.rendaMedia : 0, mesesVida: M.custoVida ? p / M.custoVida : 0, anuaisMedia};
+}
+/* simulador de parcelamento de um extra (sem rendimento) */
+function simExtra(id, parcelas, mesInicio){
+  const M = compute({pure:true, extraOverride:{id, parcelas, mesInicio}});
+  let c = (+M.cfg.poteInicial || 0) + (+M.cfg.reservaInicial || 0), min = Infinity, minYm = null;
+  const serie = M.rows.map(r => { c += r.sobra - r.anuaisMes; if (c < min) { min = c; minYm = r.ym; } return c; });
+  return {serie, min, minYm, fim:c, labels:M.months.map(ymLabel)};
+}
+
+/* ===================== finanças: fórmulas das calculadoras ===================== */
+const FV = (pv, pmt, r, n) => r ? pv * Math.pow(1 + r, n) + pmt * (Math.pow(1 + r, n) - 1) / r : pv + pmt * n;
+const PMTmeta = (fv, pv, r, n) => r ? (fv - pv * Math.pow(1 + r, n)) * r / (Math.pow(1 + r, n) - 1) : (fv - pv) / n;
+const PVann = (pmt, r, n) => r ? pmt * (1 - Math.pow(1 + r, -n)) / r : pmt * n;
+function irParcelas(avista, parcela, n, noAto){
+  const pv = i => noAto ? parcela + PVann(parcela, i, n - 1) : PVann(parcela, i, n);
+  if (parcela * n <= avista + 1e-9) return 0;
+  let lo = 0, hi = 1;
+  for (let k = 0; k < 100; k++) { const mid = (lo + hi) / 2; if (pv(mid) > avista) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+const aliquotaIR = dias => dias <= 180 ? 22.5 : dias <= 360 ? 20 : dias <= 720 ? 17.5 : 15;
+
+/* ===================== gráficos (SVG) ===================== */
+let CH = {}, chartSeq = 0;
+function niceTicks(min, max, count){
+  const span = max - min || Math.abs(max) || 1;
+  const raw = span / count, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw) || 10 * mag;
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+  const out = []; for (let v = lo; v <= hi + step / 2; v += step) out.push(Math.round(v * 100) / 100);
+  return out;
+}
+function chart(spec){
+  const id = 'ch' + (++chartSeq); CH[id] = spec;
+  let leg = '';
+  const items = spec.series.filter(s => !s.noLegend).map(s => `<span><i class="${s.dash ? 'sw-dash' : spec.type === 'bar' ? 'sw-dot' : 'sw-line'}" style="${spec.type === 'bar' && !s.dash ? 'background' : 'border-color'}:var(${s.color})"></i>${esc(s.name)}</span>`);
+  (spec.refs || []).forEach(r => items.push(`<span><i class="sw-dash" style="border-color:var(${r.color || '--axis'})"></i>${esc(r.label)}</span>`));
+  if (items.length > 1 || spec.legend) leg = `<div class="legend">${items.join('')}</div>`;
+  return `<div class="chart" id="${id}" style="height:${spec.h || 190}px" role="img" aria-label="${esc(spec.title || '')}"></div>${leg}`;
+}
+function drawCharts(){ for (const id in CH) { const el = document.getElementById(id); if (el) drawChart(el, CH[id]); } }
+function drawChart(el, sp){
+  const W = Math.max(260, el.clientWidth || 320), H = sp.h || 190;
+  const padL = sp.padL || 46, padR = 10, padT = 14, padB = 22;
+  const n = sp.labels.length;
+  const isBar = sp.type === 'bar';
+  let vals = [];
+  if (isBar && sp.stacked) { for (let i = 0; i < n; i++) { let p = 0, q = 0; sp.series.forEach(s => { const v = +s.values[i] || 0; if (v >= 0) p += v; else q += v; }); vals.push(p, q); } }
+  else sp.series.forEach(s => s.values.forEach(v => { if (v != null && !isNaN(v)) vals.push(+v); }));
+  (sp.refs || []).forEach(r => vals.push(r.value));
+  if (sp.zero !== false) vals.push(0);
+  if (!vals.length) vals = [0, 1];
+  let min = Math.min(...vals), max = Math.max(...vals);
+  if (min === max) { max = min + 1; }
+  const ticks = niceTicks(min, max, sp.ticks || 4); min = ticks[0]; max = ticks[ticks.length - 1];
+  const ih = H - padT - padB, iw = W - padL - padR;
+  const y = v => padT + (max - v) / (max - min) * ih;
+  const band = iw / Math.max(n, 1);
+  const x = i => isBar ? padL + band * i + band / 2 : padL + (n <= 1 ? iw / 2 : i * iw / (n - 1));
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  ticks.forEach(t => { s += `<line x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}" class="g${t === 0 ? ' g0' : ''}"/><text x="${padL - 6}" y="${y(t) + 4}" class="yt" text-anchor="end">${esc((sp.fmtAxis || kfmt)(t))}</text>`; });
+  const maxLab = Math.max(1, Math.floor(iw / (sp.labW || 40)));
+  const step = Math.max(1, Math.ceil(n / maxLab));
+  sp.labels.forEach((l, i) => { if (i % step === 0) s += `<text x="${x(i)}" y="${H - 5}" class="xt" text-anchor="middle">${esc(l)}</text>`; });
+  if (isBar) {
+    const k = sp.stacked ? 1 : sp.series.length;
+    const bw = Math.max(3, Math.min(26, (band * 0.7 - (k - 1) * 2) / k));
+    for (let i = 0; i < n; i++) {
+      if (sp.stacked) {
+        let p = 0, q = 0;
+        sp.series.forEach(se => {
+          const v = +se.values[i] || 0; if (!v) return;
+          let y0, y1; if (v >= 0) { y0 = y(p + v); y1 = y(p); p += v; } else { y0 = y(q); y1 = y(q + v); q += v; }
+          const hgt = Math.max(0, y1 - y0 - 2);
+          s += `<rect x="${x(i) - bw / 2}" y="${y0 + (v >= 0 ? 2 : 0)}" width="${bw}" height="${hgt}" rx="3" fill="var(${se.color})"/>`;
+        });
+      } else {
+        sp.series.forEach((se, si) => {
+          const v = +se.values[i]; if (!v) return;
+          const xl = x(i) - (k * bw + (k - 1) * 2) / 2 + si * (bw + 2);
+          const y0 = y(Math.max(v, 0)), y1 = y(Math.min(v, 0));
+          const col = se.colorFn ? se.colorFn(v) : se.color;
+          s += `<rect x="${xl}" y="${y0}" width="${bw}" height="${Math.max(1, y1 - y0)}" rx="3" fill="var(${col})"/>`;
+        });
+      }
+    }
+  } else {
+    sp.series.forEach(se => {
+      let d = '', started = false, area = '';
+      se.values.forEach((v, i) => { if (v == null || isNaN(v)) { started = false; return; } d += (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); started = true; });
+      if (se.area && d) { const idx = se.values.map((v, i) => v == null ? -1 : i).filter(i => i >= 0); area = `<path d="${d}L${x(idx[idx.length - 1])} ${y(Math.max(min, 0))}L${x(idx[0])} ${y(Math.max(min, 0))}Z" fill="var(${se.color})" opacity=".12"/>`; }
+      s += area + `<path d="${d}" fill="none" stroke="var(${se.color})" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${se.dash ? ' stroke-dasharray="5 4"' : ''}/>`;
+      if (se.endDot) { let li = -1; se.values.forEach((v, i) => { if (v != null) li = i; }); if (li >= 0) s += `<circle cx="${x(li)}" cy="${y(se.values[li])}" r="4" fill="var(${se.color})" stroke="var(--card)" stroke-width="2"/>`; }
+    });
+  }
+  (sp.refs || []).forEach(r => { s += `<line x1="${padL}" x2="${W - padR}" y1="${y(r.value)}" y2="${y(r.value)}" stroke="var(${r.color || '--axis'})" stroke-width="1.5" stroke-dasharray="5 4"/>`; });
+  (sp.markers || []).forEach(m => { const cx = x(m.i), cy = y(m.v); const anchor = cx > W - 80 ? 'end' : cx < padL + 60 ? 'start' : 'middle'; s += `<circle cx="${cx}" cy="${cy}" r="4.5" fill="var(${m.color || '--crit'})" stroke="var(--card)" stroke-width="2"/><text x="${cx}" y="${cy + (m.below ? 16 : -9)}" class="lbl" text-anchor="${anchor}">${esc(m.label)}</text>`; });
+  s += `<line class="xh" x1="0" x2="0" y1="${padT}" y2="${H - padB}" visibility="hidden"/></svg><div class="tip" hidden></div>`;
+  el.innerHTML = s;
+  const svg = el.firstChild, xh = svg.querySelector('.xh'), tip = el.querySelector('.tip');
+  const fmtV = sp.fmt || fmt;
+  const show = e => {
+    const rect = el.getBoundingClientRect(); const px = (e.clientX - rect.left) * (W / rect.width);
+    let i = isBar ? Math.floor((px - padL) / band) : Math.round((px - padL) / (iw / Math.max(n - 1, 1)));
+    i = Math.max(0, Math.min(n - 1, i));
+    xh.setAttribute('x1', x(i)); xh.setAttribute('x2', x(i)); xh.setAttribute('visibility', 'visible');
+    let h = `<b>${esc(sp.tipLabels ? sp.tipLabels[i] : sp.labels[i])}</b>`;
+    sp.series.forEach(se => { const v = se.values[i]; if (v == null) return; h += `<div class="tr"><span><i class="${isBar ? 'sw-dot' : se.dash ? 'sw-dash' : 'sw-line'}" style="${isBar ? 'background' : 'border-color'}:var(${se.colorFn ? se.colorFn(v) : se.color})"></i>${esc(se.name)}</span><span class="num">${esc(fmtV(v))}</span></div>`; });
+    (sp.refs || []).forEach(r => { h += `<div class="tr"><span><i class="sw-dash" style="border-color:var(${r.color || '--axis'})"></i>${esc(r.label)}</span><span class="num">${esc(fmtV(r.value))}</span></div>`; });
+    if (sp.tipExtra) h += sp.tipExtra(i);
+    tip.innerHTML = h; tip.hidden = false;
+    const tx = x(i) / W * rect.width;
+    const tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(rect.width - tw, tx + (tx > rect.width / 2 ? -tw - 12 : 12))) + 'px';
+    tip.style.top = '4px';
+  };
+  el.onpointermove = show; el.onpointerdown = show;
+  el.onpointerleave = () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); };
+}
+
+/* ===================== estado de navegação ===================== */
+const UI = {tab:'hoje', sub:[], ym:null, dym:null, pseg:'resumo', cym:null, scroll:{}, calc:{}};
+try { const t = sessionStorage.getItem('pf-tab'); if (t) UI.tab = t; } catch (e) {}
+let renderQueued = false;
+function scheduleRender(){ if (renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render(); }); }
+function go(tab){ UI.scroll[UI.tab + UI.sub.join('/')] = window.scrollY; UI.tab = tab; UI.sub = []; try { sessionStorage.setItem('pf-tab', tab); } catch (e) {} render(); window.scrollTo(0, 0); }
+function push(page){ UI.scroll[UI.tab + UI.sub.join('/')] = window.scrollY; UI.sub.push(page); render(); window.scrollTo(0, 0); }
+function pop(){ UI.sub.pop(); render(); window.scrollTo(0, UI.scroll[UI.tab + UI.sub.join('/')] || 0); }
+
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200); }
+
+/* ===================== componentes ===================== */
+const header = (title, sub, right) => `<header class="lt"><div><h1>${esc(title)}</h1>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>${right || ''}</header>`;
+const navbar = (title, backLabel) => `<div class="navbar"><button class="back" data-act="pop">${ICON.left}<span>${esc(backLabel || 'Voltar')}</span></button><div class="ttl">${esc(title)}</div><span></span></div>`;
+const plusBtn = (act, label) => `<button class="circle-btn" data-act="${act}" aria-label="${esc(label)}">${ICON.plus}</button>`;
+function mswitch(ym, months, act){
+  const i = months.indexOf(ym);
+  return `<div class="mswitch"><button data-act="${act}:${i > 0 ? months[i - 1] : ''}" ${i <= 0 ? 'disabled' : ''} aria-label="Mês anterior">${ICON.left}</button><div class="m">${esc(ymLong(ym).replace(/^./, c => c.toUpperCase()))}</div><button data-act="${act}:${i >= 0 && i < months.length - 1 ? months[i + 1] : ''}" ${i < 0 || i >= months.length - 1 ? 'disabled' : ''} aria-label="Próximo mês">${ICON.right}</button></div>`;
+}
+const rowNav = (act, t, d, v, ic) => `<button class="row${ic ? ' ic' : ''}" data-act="${act}">${ic ? `<span class="ico">${ic}</span>` : ''}<span class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</span>${v != null ? `<span class="v muted">${v}</span>` : ''}${ICON.chev}</button>`;
+const tile = (k, v, s, cls, act) => `<${act ? `button data-act="${act}"` : 'div'} class="tile"><div class="k">${esc(k)}</div><div><div class="v num ${cls || ''}">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div></${act ? 'button' : 'div'}>`;
+const money = (v, sign) => `<span class="num ${v < -0.004 ? 'neg' : sign && v > 0.004 ? 'pos' : ''}">${esc(sign ? fmtS(v) : fmt(v))}</span>`;
+const checkBtn = (on, act, label) => `<button class="check${on ? ' on' : ''}" data-act="${act}" aria-label="${esc(label)}" aria-pressed="${on}"></button>`;
+
+/* ===================== folhas (sheets) ===================== */
+let sheetSave = null;
+function openSheet(title, body, opts){
+  opts = opts || {};
+  const root = $('#sheet');
+  root.innerHTML = `<div class="sh-bg" data-act="closeSheet"></div><div class="sh-panel" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="sh-grab"></div><div class="sh-head"><button data-act="closeSheet">${opts.onSave ? 'Cancelar' : 'Fechar'}</button><div class="sh-t">${esc(title)}</div>${opts.onSave ? `<button class="sh-ok" data-act="sheetSave">${esc(opts.saveLabel || 'Salvar')}</button>` : '<span></span>'}</div><div class="sh-body">${body}</div></div>`;
+  sheetSave = opts.onSave || null;
+  root.hidden = false; document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('open')));
+  const b = root.querySelector('.sh-body');
+  if (opts.onMount) opts.onMount(b);
+  const first = b.querySelector('[autofocus]'); if (first) setTimeout(() => first.focus(), 350);
+}
+function closeSheet(){ const root = $('#sheet'); root.classList.remove('open'); document.body.style.overflow = ''; sheetSave = null; setTimeout(() => { if (!root.classList.contains('open')) { root.hidden = true; root.innerHTML = ''; } }, 320); }
+const fld = (id, label, val, o) => { o = o || {}; const type = o.type || 'text'; const im = o.money ? ' inputmode="decimal"' : o.int ? ' inputmode="numeric"' : ''; return `<div class="f${o.col ? ' col' : ''}"><label for="${id}">${esc(label)}</label><input class="in${o.money ? ' num' : ''}" id="${id}" type="${type}"${im} value="${esc(val == null ? '' : val)}" placeholder="${esc(o.ph || '')}"${o.af ? ' autofocus' : ''}${o.step ? ` step="${o.step}"` : ''}></div>`; };
+const sel = (id, label, val, options) => `<div class="f"><label for="${id}">${esc(label)}</label><select class="in" id="${id}">${options.map(o => `<option value="${esc(o[0])}"${String(o[0]) === String(val) ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select></div>`;
+const swf = (id, label, on) => `<div class="f"><label for="${id}" style="flex:1">${esc(label)}</label><span class="sw"><input type="checkbox" id="${id}"${on ? ' checked' : ''}><span></span></span></div>`;
+const val = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+const chk = id => { const e = document.getElementById(id); return !!(e && e.checked); };
+const mval = id => { const v = parseMoney(val(id)); return isNaN(v) ? null : v; };
+
+/* ===================== VIEW: Hoje ===================== */
+function viewHoje(){
+  const M = compute(), cfg = M.cfg, today = M.today;
+  const ym = viewYm(M);
+  const ls = livreStatus(M, ym);
+  const row = M.rows.find(r => r.ym === ym);
+  const last = M.rows[M.rows.length - 1];
+  const cal = calendario(M);
+  const dToday = cal.days.find(x => x.d === today) || cal.days[0];
+  const minM = cal.minPorMes[ym];
+  let h = header('Hoje', dayLong(today).replace(/^./, c => c.toUpperCase()));
+  if (S.mode === 'local') h += `<div class="banner">Modo local: os dados ficam só neste navegador. Abra pelo link do claude.ai para sincronizar entre celular e computador.</div>`;
+  if (!hasCfg()) h += `<section><div class="note"><b>Seu plano ainda não foi configurado.</b> Comece pelas Premissas (salário, contas fixas e cartões) ou restaure um backup.</div><div class="btns" style="margin-top:10px"><button class="btn" data-act="goSub:premissas">Configurar meu plano</button><button class="btn tint" data-act="goSub:backup">Restaurar backup</button></div></section>`;
+  let status = '';
+  if (today < ymd(M.start, 1)) { const n = dDiff(today, ymd(M.start, 1)); status = `Seu plano começa em 1º de ${MESL[+M.start.slice(5) - 1]} (${n === 1 ? 'amanhã' : 'em ' + n + ' dias'}). Até lá, os números abaixo mostram o primeiro mês.`; }
+  else if (today > ymd(M.end, 31)) status = `O plano terminou em ${ymLabel(M.end)}. Em Mais → Premissas, mude o primeiro mês para começar o próximo ano.`;
+  if (status) h += `<div class="banner">${esc(status)}</div>`;
+
+  const porDiaCls = ls.porDia >= M.g - 0.005 ? 'pos' : ls.porDia > 0 ? 'warn' : 'neg';
+  const pctGasto = ls.orc ? ls.gasto / ls.orc : 0;
+  h += `<section><div class="hero"><div class="k">Pode gastar por dia até o fim de ${esc(MESL[+ym.slice(5) - 1])}</div><div class="big num ${porDiaCls}">${esc(fmt(ls.porDia))}</div><div class="s">Hoje: ${esc(fmt(ls.hoje))} gastos · regra do plano: ${esc(fmt(M.g))}/dia</div><div class="bar" aria-label="Gasto livre do mês"><i class="${pctGasto > 1 ? 'over' : ''}" style="width:${Math.min(100, pctGasto * 100).toFixed(1)}%"></i></div><div class="s" style="margin-top:8px">${esc(fmt(ls.gasto))} de ${esc(fmt(ls.orc))} do gasto livre · ${ls.disp >= 0 ? 'restam ' + esc(fmt(ls.disp)) : '<span class="neg">passou ' + esc(fmt(-ls.disp)) + '</span>'} em ${ls.restantes} ${ls.restantes === 1 ? 'dia' : 'dias'}</div></div>`;
+  h += `<div class="btns" style="margin-top:12px"><button class="btn" data-act="novoGasto">${ICON.plus.replace('<svg', '<svg width="20" height="20"')} Lançar gasto</button></div></section>`;
+
+  const espacoCartao = M.teto - M.recTotal - comprasCartaoMes(M, ym);
+  h += `<section><div class="tiles">`;
+  h += tile('Sobra prevista de ' + ymLabel(ym), esc(fmt0(row.sobra)), 'vai para as caixinhas no fim do mês', row.sobra < 0 ? 'neg' : '', 'goMes:' + ym);
+  h += tile('Guardado em ' + ymLabel(M.end), esc(fmt0(last.total)), 'Pote + Reserva · ' + pc(last.pctMeta, 0) + ' da meta', last.total < 0 ? 'neg' : '', 'goPlano:resumo');
+  h += tile(today < ymd(M.start, 1) ? 'Saldo previsto em ' + dLabel(cal.days[0].d) : 'Saldo previsto na conta hoje', esc(fmt0(dToday.saldo)), minM ? 'menor do mês: ' + esc(fmt0(minM.saldo)) + ' em ' + dLabel(minM.d) : '', dToday.saldo < 0 ? 'neg' : '', 'goPlano:calendario');
+  h += tile('Espaço no cartão (' + ymLabel(ym) + ')', esc(fmt0(espacoCartao)), 'teto ' + esc(fmt0(M.teto)) + ' − recorrentes − compras', espacoCartao < 0 ? 'neg' : '', 'goPlano:faturas');
+  h += `</div></section>`;
+
+  const alerts = [];
+  if (minM && minM.saldo < 0) alerts.push(['crit', '!', `A conta fica negativa em ${dLabelY(minM.d)} (${fmt(minM.saldo)}). ${cfg.limiteConta ? 'Entra no limite do banco, com juros.' : ''} Adie um gasto ou antecipe uma transferência.`]);
+  else if (minM && minM.saldo < 300) alerts.push(['warn', '!', `Saldo apertado em ${dLabelY(minM.d)}: ${fmt(minM.saldo)}.`]);
+  if (ls.disp < 0) alerts.push(['crit', '!', `O gasto livre de ${ymLabel(ym)} passou do orçamento em ${fmt(-ls.disp)}. Isso sai da sobra do mês.`]);
+  const fr = M.fat.find(f => f.ym === ym);
+  if (fr && fr.total > M.teto) alerts.push(['warn', '!', `As faturas que vencem em ${ymLabel(ym)} (${fmt(fr.total)}) passam do teto de ${fmt(M.teto)}.`]);
+  const pend = list('pend').filter(p => !p.feito);
+  if (pend.length) alerts.push(['info', String(pend.length), `${pend.length === 1 ? 'Uma pendência' : pend.length + ' pendências'} do plano para resolver.`, 'goSub:pendencias']);
+  if (row.real || row.md.fechado) alerts.push(['good', '✓', `${ymLabel(ym)} já foi fechado com os saldos reais das caixinhas.`]);
+  if (alerts.length) h += `<section><div class="alerts">${alerts.map(a => `<${a[3] ? `button data-act="${a[3]}" style="border:0;text-align:left;width:100%"` : 'div'} class="alert ${a[0]}"><span class="dot">${esc(a[1])}</span><span>${esc(a[2])}</span></${a[3] ? 'button' : 'div'}>`).join('')}</div></section>`;
+
+  // gráfico do gasto acumulado
+  const labels = [], real = [], plan = [];
+  let acc = 0;
+  const dMap = {}; M.diario.filter(x => ymOf(x.data) === ym && !x.extra).forEach(x => { dMap[x.data] = (dMap[x.data] || 0) + (+x.valor || 0); });
+  for (let d = 1; d <= ls.dias; d++) { const ds = ymd(ym, d); labels.push(String(d)); acc += dMap[ds] || 0; real.push(ds <= today ? acc : null); plan.push(M.g * d); }
+  h += `<section><div class="chart-card"><h4>Gasto livre acumulado</h4><div class="cs">${esc(ymLong(ym))}: o que você gastou × o ritmo de ${esc(fmt(M.g))} por dia</div>${chart({type:'line', labels, tipLabels:labels.map(d => d + '/' + ym.slice(5)), series:[{name:'Gasto real', color:'--s1', values:real, area:true, endDot:true}, {name:'Ritmo do plano', color:'--axis', values:plan, dash:true}], h:170, labW:28})}</div></section>`;
+
+  // próximos 10 dias
+  const from = today < ymd(M.start, 1) ? ymd(M.start, 1) : today, to = dAdd(from, 10);
+  const prox = [];
+  cal.days.filter(x => x.d >= from && x.d <= to).forEach(x => x.evs.forEach(e => { if (e.kind !== 'livre') prox.push(Object.assign({d:x.d}, e)); }));
+  h += `<section><h3 class="gh"><span>Próximos 10 dias</span><button data-act="goPlano:calendario">Calendário</button></h3><div class="group">`;
+  if (!prox.length) h += `<div class="empty">Nada agendado nos próximos dias.</div>`;
+  prox.forEach(e => { h += eventRow(e); });
+  h += `</div><p class="gf">Toque no círculo para marcar como pago ou recebido.</p></section>`;
+
+  if (!cfg.tutorialVisto) h += `<section><div class="note"><b>Primeira vez aqui?</b> Veja em 1 minuto como usar o app no dia a dia.</div><div class="btns" style="margin-top:10px"><button class="btn tint" data-act="onboard">Ver o tutorial</button></div></section>`;
+  return h;
+}
+function eventRow(e){
+  const act = e.kind === 'receb' ? 'togReceb:' + e.id : e.kind === 'fixa' ? 'togFixa:' + e.ym + ':' + e.id : e.kind === 'fatura' ? 'togFatura:' + e.ym + ':' + e.id : e.kind === 'extra' ? 'togExtra:' + e.id + ':' + e.i : e.kind === 'transfer' ? 'fecharMes:' + e.ym : '';
+  const w = DOWS[dow(e.d)];
+  const lab = e.kind === 'receb' ? (e.done ? 'recebido' : '') : e.kind === 'transfer' ? (e.done ? 'feito' : '') : (e.done ? 'pago' : '');
+  return `<div class="row">${act ? checkBtn(e.done, act, 'Marcar ' + e.desc) : '<span style="width:26px"></span>'}<span class="grow"><div class="t">${esc(e.desc)}</div><div class="d">${esc(w)}, ${esc(dLabel(e.d))}${lab ? ' · ' + lab : ''}</div></span><span class="v">${money(e.valor, true)}</span></div>`;
+}
+
+/* ===================== VIEW: Diário ===================== */
+function viewDiario(){
+  const M = compute(), cfg = M.cfg;
+  const allMonths = Array.from(new Set(M.months.concat(list('diario').map(d => ymOf(d.data || ''))).filter(Boolean))).sort();
+  if (!UI.dym || !allMonths.includes(UI.dym)) UI.dym = viewYm(M);
+  const ym = UI.dym;
+  const ls = livreStatus(M, ym);
+  const inPlan = ym >= M.start && ym <= M.end;
+  const entries = list('diario').filter(d => ymOf(d.data || '') === ym).sort((a, b) => (b.data || '').localeCompare(a.data || '') || String(b.criado || '').localeCompare(String(a.criado || '')));
+  let h = header('Diário', 'Só o gasto livre do dia a dia', plusBtn('novoGasto', 'Lançar gasto'));
+  h += `<section>${mswitch(ym, allMonths, 'dym')}</section>`;
+  if (!inPlan) h += `<div class="banner">Este mês está fora do plano: os lançamentos aparecem aqui, mas não entram nas contas.</div>`;
+  const cartaoMes = sum(entries.filter(d => cardById(cfg, d.pag)), d => d.valor);
+  const imprev = sum(entries.filter(d => d.extra), d => d.valor);
+  h += `<section><div class="tiles">${tile('Gasto livre', esc(fmt(ls.gasto)), 'de ' + esc(fmt(ls.orc)) + ' (' + pc(ls.orc ? ls.gasto / ls.orc : 0, 0) + ')', ls.gasto > ls.orc ? 'neg' : '')}${tile('Pode gastar/dia', esc(fmt(ls.porDia)), ls.restantes ? ls.restantes + ' dias restantes' : 'mês encerrado', ls.porDia < 0 ? 'neg' : '')}${tile('No cartão', esc(fmt(cartaoMes)), 'compras feitas neste mês')}${tile('Imprevistos', esc(fmt(imprev)), 'fora do gasto livre')}</div></section>`;
+
+  const byCat = {};
+  entries.filter(d => !d.extra).forEach(d => { byCat[d.cat] = (byCat[d.cat] || 0) + (+d.valor || 0); });
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  if (cats.length) {
+    const mx = cats[0][1] || 1, tot = sum(cats, c => c[1]) || 1;
+    h += `<section><h3 class="gh"><span>Onde foi o dinheiro</span></h3><div class="group">${cats.map(([id, v]) => { const c = catById(cfg, id); return `<div class="catbar"><span class="ico">${esc(c.emoji)}</span><span class="nm">${esc(c.nome)}</span><span class="num">${esc(fmt(v))} <span class="muted" style="font-size:13px">${pc(v / tot, 0)}</span></span><span class="tr2"><i style="width:${(v / mx * 100).toFixed(1)}%"></i></span></div>`; }).join('')}</div></section>`;
+  }
+  h += `<section><h3 class="gh"><span>Lançamentos</span><span class="num">${entries.length}</span></h3>`;
+  if (!entries.length) h += `<div class="group"><div class="empty">Nenhum gasto lançado em ${esc(ymLong(ym))}.<br>Toque em + para lançar.</div></div>`;
+  else {
+    const byDay = {};
+    entries.forEach(d => { (byDay[d.data] = byDay[d.data] || []).push(d); });
+    Object.keys(byDay).sort().reverse().forEach(day => {
+      const tot = sum(byDay[day], d => d.valor);
+      h += `<h3 class="gh" style="margin-top:14px"><span>${esc(DOW[dow(day)])}, ${esc(dLabel(day))}</span><span class="num">${esc(fmt(tot))}</span></h3><div class="group">`;
+      byDay[day].forEach(d => {
+        const c = catById(cfg, d.cat), k = cardById(cfg, d.pag);
+        const pagNome = k ? k.nome : (PAGS_FIXOS.find(p => p.id === d.pag) || {nome:d.pag || ''}).nome;
+        const info = k ? pagNome + ' · fatura de ' + ymLabel(dueOf(k, d.data).dueYm) : pagNome;
+        h += `<button class="row ic" data-act="editGasto:${esc(d.id)}"><span class="ico">${esc(c.emoji)}</span><span class="grow"><div class="t">${esc(d.desc || c.nome)}</div><div class="d">${esc(c.nome)} · ${esc(info)}${d.extra ? ' · imprevisto' : ''}</div></span><span class="v num">${esc(fmt(+d.valor))}</span></button>`;
+      });
+      h += `</div>`;
+    });
+  }
+  h += `<p class="gf">Anote aqui comer fora, lazer, farmácia, roupas, mercado extra… Contas fixas e cobranças que se repetem no cartão já estão no plano: não lance de novo.</p></section>`;
+  return h;
+}
+function sheetGasto(id){
+  const cfg = C();
+  const d = id ? S.data.diario[id] : null;
+  const e = d ? clone(d) : {data:todayStr(), cat:(cfg.categorias[0] || {}).id, pag:'debito', valor:'', desc:'', extra:false};
+  const pags = pagamentos(cfg);
+  const body = `<div class="amount"><span>R$</span><input id="g-valor" inputmode="decimal" class="num" placeholder="0,00" value="${esc(moneyIn(e.valor))}" autofocus aria-label="Valor"></div>
+  <div class="fg">${fld('g-desc', 'Descrição', e.desc, {ph:'Ex.: almoço'})}${fld('g-data', 'Data', e.data, {type:'date'})}</div>
+  <h3 class="gh" style="margin-top:18px">Categoria</h3><div class="fg" style="margin-top:0"><div class="chips" id="g-cats">${cfg.categorias.map(c => `<button class="chip${c.id === e.cat ? ' on' : ''}" data-cat="${esc(c.id)}" type="button">${esc(c.emoji)} ${esc(c.nome)}</button>`).join('')}</div></div>
+  <h3 class="gh" style="margin-top:18px">Pagamento</h3><div class="seg" id="g-pag">${pags.map(p => `<button type="button" data-pag="${esc(p.id)}" class="${p.id === e.pag ? 'on' : ''}">${esc(p.nome)}</button>`).join('')}</div>
+  <p class="fh" id="g-fat"></p>
+  <div class="fg">${swf('g-extra', 'Imprevisto (fora do gasto livre)', e.extra)}</div>
+  <p class="fh">Use para algo grande e raro (conserto, remédio caro). Não entra no “pode gastar por dia”, mas sai da sobra do mês.</p>
+  ${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delGasto:${esc(id)}">Apagar lançamento</button></div>` : ''}`;
+  openSheet(id ? 'Editar gasto' : 'Novo gasto', body, {
+    onMount: b => {
+      const upd = () => { const k = cardById(cfg, e.pag); const dt = val('g-data'); const p = $('#g-fat'); if (k && dt) { const q = dueOf(k, dt); p.textContent = `Cai na fatura de ${ymLabel(q.dueYm)} do ${k.nome} (fecha ${dLabel(q.closeDate)}, vence ${dLabel(q.dueDate)}).`; } else p.textContent = 'Sai direto da conta.'; };
+      b.querySelector('#g-cats').onclick = ev => { const t = ev.target.closest('[data-cat]'); if (!t) return; e.cat = t.dataset.cat; $$('#g-cats .chip').forEach(x => x.classList.toggle('on', x === t)); };
+      b.querySelector('#g-pag').onclick = ev => { const t = ev.target.closest('[data-pag]'); if (!t) return; e.pag = t.dataset.pag; $$('#g-pag button').forEach(x => x.classList.toggle('on', x === t)); upd(); };
+      $('#g-data').onchange = upd; upd();
+    },
+    onSave: () => {
+      const v = mval('g-valor');
+      if (!(v > 0)) { toast('Digite um valor maior que zero.'); return false; }
+      const dt = val('g-data'); if (!dt) { toast('Escolha a data.'); return false; }
+      const doc = {data:dt, desc:val('g-desc').trim(), cat:e.cat, pag:e.pag, valor:Math.round(v * 100) / 100, extra:chk('g-extra'), criado:(d && d.criado) || new Date().toISOString()};
+      put('diario', id || uid(), doc); toast(id ? 'Gasto atualizado' : 'Gasto lançado');
+    }
+  });
+}
+
+/* ===================== VIEW: Mês ===================== */
+function viewMes(){
+  const M = compute(), cfg = M.cfg;
+  if (!UI.ym || !M.months.includes(UI.ym)) UI.ym = viewYm(M);
+  const ym = UI.ym, row = M.rows.find(r => r.ym === ym), md = row.md || {};
+  const fr = M.fat.find(f => f.ym === ym);
+  let h = header('Mês', 'Contas, recebimentos e fechamento');
+  h += `<section>${mswitch(ym, M.months, 'mym')}</section>`;
+  h += `<section><div class="tiles">${tile('Entradas', esc(fmt0(row.entradas)), row.recM.length + ' recebimento' + (row.recM.length === 1 ? '' : 's'), 'pos')}${tile('Saídas', esc(fmt0(row.saidas)), row.livreModo === 'real' ? 'com o gasto real' : row.livreModo === 'parcial' ? 'real até hoje + previsto' : 'previsto')}${tile('Sobra → caixinhas', esc(fmt0(row.sobra)), row.colchao ? 'já tirando o colchão de ' + esc(fmt0(row.colchao)) : 'Pote ' + esc(fmt0(row.poteDep)) + ' · Reserva ' + esc(fmt0(row.resDep)), row.sobra < 0 ? 'neg' : 'pos')}${tile('Guardado no fim do mês', esc(fmt0(row.total)), row.real ? 'saldo real informado' : 'previsto, com rendimento')}</div></section>`;
+
+  // entradas
+  h += `<section><h3 class="gh"><span>Entradas</span><button data-act="novoExtra:entrada:${ym}">+ Entrada extra</button></h3><div class="group">`;
+  row.recM.forEach(r => { h += `<div class="row">${checkBtn(r.recebido, 'togReceb:' + r.id, 'Marcar recebido')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editReceb:${r.id}"><div class="t">Recebimento ${pad(r.n)}</div><div class="d">${esc(DOWS[dow(r.data)])}, ${esc(dLabel(r.data))}${r.data !== r.prevista ? ' (previsto ' + esc(dLabel(r.prevista)) + ')' : ''} · ${r.real ? 'valor real' : 'valor previsto'}</div></button><span class="v">${money(r.valor)}</span></div>`; });
+  row.extM.filter(p => p.e.tipo === 'entrada').forEach(p => { h += `<div class="row">${checkBtn(p.pago, 'togExtra:' + p.e.id + ':' + p.i, 'Marcar recebido')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editExtra:${esc(p.e.id)}"><div class="t">${esc(p.e.nome)}</div><div class="d">entrada extra · ${esc(dLabel(p.data))}</div></button><span class="v">${money(p.valor)}</span></div>`; });
+  if (!row.recM.length && !row.extM.some(p => p.e.tipo === 'entrada')) h += `<div class="empty">Nenhuma entrada prevista.</div>`;
+  h += `</div><p class="gf">Recebeu? Toque no nome para digitar o valor e a data reais; o plano se ajusta sozinho.</p></section>`;
+
+  // fixas
+  h += `<section><h3 class="gh"><span>Contas fixas (débito/Pix)</span><span class="num">${esc(fmt(row.fixM))}</span></h3><div class="group">`;
+  M.fixas.forEach(f => { const pago = !!(md.fixasPagas && md.fixasPagas[f.id]); const v = row.fixV(f); const dias = (Array.isArray(f.dias) && f.dias.length ? f.dias : [f.dia || 1]); h += `<div class="row">${checkBtn(pago, 'togFixa:' + ym + ':' + f.id, 'Marcar pago')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editFixaMes:${ym}:${esc(f.id)}"><div class="t">${esc(f.nome)}</div><div class="d">dia ${esc(dias.join(', '))}${md.fixasValor && isSet(md.fixasValor[f.id]) ? ' · valor real' : ''}</div></button><span class="v">${money(-v)}</span></div>`; });
+  if (!M.fixas.length) h += `<div class="empty">Sem contas fixas. Cadastre em Mais → Contas fixas.</div>`;
+  h += `</div></section>`;
+
+  // faturas
+  h += `<section><h3 class="gh"><span>Faturas que vencem neste mês</span><span class="num">${esc(fmt(fr ? fr.total : 0))}</span></h3><div class="group">`;
+  cfg.cartoes.forEach(k => { const p = fr.por[k.id]; h += `<div class="row">${checkBtn(p.pago, 'togFatura:' + ym + ':' + k.id, 'Marcar paga')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editFatura:${ym}:${esc(k.id)}"><div class="t">${esc(k.nome)}</div><div class="d">vence ${esc(dLabel(p.dueDate))} · ${p.real ? 'valor real' : 'previsto'} · ${p.items.length} ${p.items.length === 1 ? 'item' : 'itens'}</div></button><span class="v">${money(-p.valor)}</span></div>`; });
+  if (!cfg.cartoes.length) h += `<div class="empty">Nenhum cartão cadastrado.</div>`;
+  h += `</div><p class="gf">Compra no cartão conta no mês em que você compra (entra no gasto livre ou nas recorrentes). A fatura aqui é só o dinheiro saindo da conta.</p></section>`;
+
+  // gasto livre, recorrentes, extras
+  h += `<section><h3 class="gh"><span>Outras saídas do mês</span></h3><div class="group">`;
+  h += `<button class="row" data-act="goDiario:${ym}"><span class="grow"><div class="t">Gasto livre</div><div class="d">${row.livreModo === 'real' ? 'real' : row.livreModo === 'parcial' ? 'real ' + esc(fmt(row.livreReal)) + ' + resto do mês previsto' : 'orçamento: ' + esc(fmt(M.g)) + ' × ' + row.dias + ' dias'}</div></span><span class="v">${money(-row.livre)}</span>${ICON.chev}</button>`;
+  h += `<button class="row" data-act="goSub:recorrentes"><span class="grow"><div class="t">Cobranças que se repetem no cartão</div><div class="d">${M.recs.map(x => esc(x.nome)).join(', ') || 'nenhuma'}</div></span><span class="v">${money(-row.recTotal)}</span>${ICON.chev}</button>`;
+  if (row.antigas) h += `<div class="row"><span class="grow"><div class="t">Faturas antigas</div><div class="d">compras feitas antes do plano, pagas neste mês</div></span><span class="v">${money(-row.antigas)}</span></div>`;
+  if (row.imprev) h += `<button class="row" data-act="goDiario:${ym}"><span class="grow"><div class="t">Imprevistos</div><div class="d">lançados no Diário</div></span><span class="v">${money(-row.imprev)}</span>${ICON.chev}</button>`;
+  row.extM.filter(p => p.e.tipo !== 'entrada').forEach(p => { h += `<div class="row">${checkBtn(p.pago, 'togExtra:' + p.e.id + ':' + p.i, 'Marcar pago')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editExtra:${esc(p.e.id)}"><div class="t">${esc(p.e.nome)}${p.e.parcelas > 1 ? ' (' + (p.i + 1) + '/' + p.e.parcelas + ')' : ''}</div><div class="d">${esc(p.e.forma || 'Pix')} · ${esc(dLabel(p.data))}</div></button><span class="v">${money(-p.valor)}</span></div>`; });
+  if (row.colchao) h += `<div class="row"><span class="grow"><div class="t">Colchão na conta corrente</div><div class="d">separado uma vez e deixado na conta</div></span><span class="v">${money(-row.colchao)}</span></div>`;
+  h += `</div><p class="gf"><button class="btn tint sm" data-act="novoExtra:saida:${ym}" style="display:inline-flex">+ Gasto extra planejado</button></p></section>`;
+
+  // anuais
+  const anM = M.anuaisPlano.filter(a => a.mesCalc === ym);
+  if (anM.length) {
+    h += `<section><h3 class="gh"><span>Contas anuais (saem do Pote)</span></h3><div class="group">`;
+    anM.forEach(a => { h += `<div class="row">${checkBtn(!!a.pago, 'togAnual:' + a.id, 'Marcar paga')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editAnual:${esc(a.id)}"><div class="t">${esc(a.nome)}</div><div class="d">${esc(a.obs || 'pague com o dinheiro do Pote Anuais')}</div></button><span class="v">${money(-a.valor)}</span></div>`; });
+    h += `</div></section>`;
+  }
+
+  // fechamento
+  const transf = row.poteDep + row.resDep;
+  h += `<section><h3 class="gh"><span>Fim do mês</span></h3><div class="note">`;
+  if (row.sobra >= 0) h += `No último dia, mande <b>${esc(fmt(transf))}</b> para as caixinhas: <b>${esc(fmt(row.poteDep))}</b> para o Pote Anuais e <b>${esc(fmt(row.resDep))}</b> para a Reserva de emergência.`;
+  else h += `Este mês fecha no vermelho: <b>${esc(fmt(-row.sobra))}</b> precisam sair da Reserva para cobrir.`;
+  if (row.falta) h += ` O Pote não cobre as contas anuais do mês: ${esc(fmt(row.falta))} saem da Reserva.`;
+  h += `<br><span style="display:block;margin-top:6px">Pote: ${esc(fmt(row.poteIni))} → ${esc(fmt(row.poteFim))} · Reserva: ${esc(fmt(row.resIni))} → ${esc(fmt(row.resFim))}${row.real ? ' (real)' : ''}</span></div>`;
+  h += `<div class="btns" style="margin-top:10px"><button class="btn${md.fechado ? ' tint' : ''}" data-act="fecharMes:${ym}">${md.fechado ? 'Editar fechamento' : 'Fechar o mês'}</button></div></section>`;
+  return h;
+}
+
+/* ===================== VIEW: Plano ===================== */
+function viewPlano(){
+  const M = compute(), cfg = M.cfg;
+  let h = header('Plano', ymLabel(M.start) + ' → ' + ymLabel(M.end) + ' · valores em R$');
+  const segs = [['resumo', 'Resumo'], ['faturas', 'Faturas'], ['calendario', 'Calendário'], ['cenarios', 'Cenários']];
+  h += `<section style="margin-top:12px"><div class="seg" role="tablist">${segs.map(s => `<button role="tab" aria-selected="${UI.pseg === s[0]}" class="${UI.pseg === s[0] ? 'on' : ''}" data-act="pseg:${s[0]}">${s[1]}</button>`).join('')}</div></section>`;
+  if (UI.pseg === 'resumo') h += planoResumo(M);
+  else if (UI.pseg === 'faturas') h += planoFaturas(M);
+  else if (UI.pseg === 'calendario') h += planoCalendario(M);
+  else h += planoCenarios(M);
+  return h;
+}
+function planoResumo(M){
+  const last = M.rows[M.rows.length - 1];
+  const labels = M.months.map(ymLabel);
+  const totEnt = sum(M.rows, r => r.entradas), totSai = sum(M.rows, r => r.saidas), totSob = sum(M.rows, r => r.sobra), totAn = sum(M.rows, r => r.anuaisMes);
+  let h = `<section><div class="tiles">${tile('Guardado em ' + ymLabel(M.end), esc(fmt0(last.total)), 'Pote + Reserva, com rendimento', last.total < 0 ? 'neg' : 'pos')}${tile('Reserva × meta', pc(last.pctMeta, 1), 'meta ' + esc(fmt0(M.meta)) + ' = ' + M.cfg.metaMeses + ' × custo de vida')}${tile('Renda média/mês', esc(fmt0(M.rendaMedia)), M.recPlan.length + ' recebimentos no plano')}${tile('Custo de vida/mês', esc(fmt0(M.custoVida)), 'fixas + cartão + ' + esc(fmt(M.g)) + '/dia × ' + nf(M.diasMes, 1))}</div></section>`;
+  h += `<section><div class="chart-card"><h4>Caixinhas ao longo do plano</h4><div class="cs">Saldo no fim de cada mês, com rendimento de ${nf(M.cfg.rendimento, 2)}% ao mês</div>${chart({type:'line', labels, series:[{name:'Reserva de emergência', color:'--s1', values:M.rows.map(r => r.resFim), area:true, endDot:true}, {name:'Pote Anuais', color:'--s2', values:M.rows.map(r => r.poteFim), endDot:true}], refs:[{value:M.meta, label:'Meta da reserva', color:'--axis'}], h:210})}</div></section>`;
+  h += `<section><div class="chart-card"><h4>Sobra de cada mês</h4><div class="cs">O que vai para as caixinhas depois de todas as saídas</div>${chart({type:'bar', labels, series:[{name:'Sobra', color:'--s1', values:M.rows.map(r => r.sobra), colorFn:v => v < 0 ? '--crit' : '--s1'}], h:180})}</div></section>`;
+  h += `<section><div class="chart-card"><h4>Entradas e saídas</h4><div class="cs">Meses com 3 recebimentos aparecem mais altos</div>${chart({type:'bar', labels, series:[{name:'Entradas', color:'--s1', values:M.rows.map(r => r.entradas)}, {name:'Saídas', color:'--s2', values:M.rows.map(r => r.saidas)}], h:190})}</div></section>`;
+  h += `<section><h3 class="gh"><span>Os ${M.months.length} meses</span><span>toque para abrir</span></h3><div class="tbl-wrap"><table class="t"><thead><tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Sobra</th><th>Anuais</th><th>Pote (fim)</th><th>Reserva (fim)</th><th>% meta</th><th>Guardado</th></tr></thead><tbody>`;
+  M.rows.forEach(r => { h += `<tr class="${r.ym === M.tYm ? 'cur' : ''}" data-act="goMes:${r.ym}" style="cursor:pointer"><td>${esc(ymLabel(r.ym))}${r.real ? ' ✓' : ''}</td><td>${fmt(r.entradas)}</td><td>${fmt(r.saidas)}</td><td class="${r.sobra < 0 ? 'neg' : ''}">${fmt(r.sobra)}</td><td>${r.anuaisMes ? fmt(r.anuaisMes) : '–'}</td><td>${fmt(r.poteFim)}</td><td class="${r.resFim < 0 ? 'neg' : ''}">${fmt(r.resFim)}</td><td>${pc(r.pctMeta)}</td><td>${fmt(r.total)}</td></tr>`; });
+  h += `<tr class="tot"><td>Total</td><td>${fmt(totEnt)}</td><td>${fmt(totSai)}</td><td>${fmt(totSob)}</td><td>${fmt(totAn)}</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>`;
+  h += `<p class="gf">✓ = mês fechado com os saldos reais. ${M.useReal ? 'Meses passados usam o gasto real do Diário; o mês atual usa o real até hoje e o previsto no resto.' : 'Todas as linhas usam o orçamento do plano (ative “usar gastos reais” nas Premissas).'}</p></section>`;
+  h += `<section><h3 class="gh"><span>Linha a linha</span></h3><div class="tbl-wrap"><table class="t"><thead><tr><th>Linha</th>${M.months.map(m => `<th>${ymLabel(m)}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  const line = (lab, f, bold) => { const vs = M.rows.map(f); return `<tr class="${bold ? 'tot' : ''}"><td>${esc(lab)}</td>${vs.map(v => `<td class="${v < -0.004 ? 'neg' : ''}">${Math.abs(v) < 0.005 ? '–' : fmt(v)}</td>`).join('')}<td>${fmt(sum(vs))}</td></tr>`; };
+  h += line('Recebimentos', r => r.entReceb) + line('Entradas extras', r => r.entExtra) + line('Total de entradas', r => r.entradas, 1);
+  h += line('Contas fixas', r => r.fixM) + line('Cartão — recorrentes', r => r.recTotal) + line('Cartão — faturas antigas', r => r.antigas) + line('Gasto livre', r => r.livre) + line('Extras e imprevistos', r => r.saiExtra + r.imprev) + line('Total de saídas', r => r.saidas, 1);
+  h += line('Colchão na conta', r => r.colchao) + line('Sobra do mês', r => r.sobra, 1) + line('Contas anuais (do Pote)', r => r.anuaisMes);
+  h += line('Pote — rendimento', r => r.poteRend) + line('Pote — depósito', r => r.poteDep) + line('Pote — saldo no fim', r => r.poteFim, 1);
+  h += line('Reserva — rendimento', r => r.resRend) + line('Reserva — depósito', r => r.resDep) + line('Reserva — saldo no fim', r => r.resFim, 1);
+  h += `</tbody></table></div></section>`;
+  return h;
+}
+function planoFaturas(M){
+  const cfg = M.cfg, labels = M.months.map(ymLabel);
+  const cols = ['--s1', '--s2', '--s3'];
+  let h = `<section><div class="tiles">${tile('Teto de cartão/mês', esc(fmt0(M.teto)), nf(cfg.tetoPct, 0) + '% da renda média')}${tile('Espaço p/ compras novas', esc(fmt0(M.teto - M.recTotal)), 'teto − recorrentes de ' + esc(fmt0(M.recTotal)))}</div></section>`;
+  h += `<section><div class="chart-card"><h4>Faturas previstas por vencimento</h4><div class="cs">Só o que já é certo, mais as compras lançadas no Diário</div>${chart({type:'bar', stacked:true, labels, series:cfg.cartoes.map((k, i) => ({name:k.nome, color:cols[i % 3], values:M.fat.map(f => f.por[k.id].valor)})), refs:[{value:M.teto, label:'Teto', color:'--axis'}], h:200, legend:true})}</div></section>`;
+  h += `<section><div class="tbl-wrap"><table class="t"><thead><tr><th>Mês</th>${cfg.cartoes.map(k => `<th>${esc(k.nome)} (dia ${k.vence})</th>`).join('')}<th>Total</th><th>% entradas</th><th>Espaço</th></tr></thead><tbody>`;
+  M.fat.forEach(f => { h += `<tr class="${f.ym === M.tYm ? 'cur' : ''}" data-act="goMes:${f.ym}" style="cursor:pointer"><td>${ymLabel(f.ym)}</td>${cfg.cartoes.map(k => { const p = f.por[k.id]; return `<td>${fmt(p.valor)}${p.real ? ' ✓' : ''}</td>`; }).join('')}<td><b>${fmt(f.total)}</b></td><td>${pc(f.pct)}</td><td class="${f.espaco < 0 ? 'neg' : ''}">${fmt(f.espaco)}</td></tr>`; });
+  h += `</tbody></table></div><p class="gf">✓ = valor real da fatura digitado. ${cfg.cartoes.map(k => `${esc(k.nome)}: fecha dia ${k.fecha}, vence dia ${k.vence}`).join(' · ')}. Melhor dia de compra = dia do fechamento: a compra só é cobrada na fatura seguinte.</p></section>`;
+  return h;
+}
+function planoCalendario(M){
+  const cal = calendario(M);
+  if (!UI.cym || !M.months.includes(UI.cym)) UI.cym = viewYm(M);
+  const ym = UI.cym;
+  const days = cal.days.filter(x => x.ym === ym);
+  const mn = cal.minPorMes[ym];
+  const mi = days.indexOf(mn);
+  let h = `<section>${mswitch(ym, M.months, 'cym')}</section>`;
+  h += `<section><div class="chart-card"><h4>Saldo previsto da conta corrente</h4><div class="cs">Visão conservadora: ${M.useReal ? 'dias passados usam o Diário; ' : ''}o gasto livre futuro sai todo dia no débito</div>${chart({type:'line', labels:days.map(x => String(+x.d.slice(8))), tipLabels:days.map(x => DOWS[dow(x.d)] + ', ' + dLabel(x.d)), series:[{name:'Saldo', color:'--s1', values:days.map(x => x.saldo), area:true}], markers: mn ? [{i:mi, v:mn.saldo, label:'menor: ' + fmt0(mn.saldo), color: mn.saldo < 0 ? '--crit' : '--s2', below: mn.saldo > (sum(days, x => x.saldo) / days.length)}] : [], h:200, labW:26, tipExtra:i => { const ev = days[i].evs.filter(e => e.kind !== 'livre'); return ev.length ? '<div style="margin-top:4px;border-top:.5px solid var(--sep);padding-top:4px">' + ev.map(e => `<div class="tr"><span>${esc(e.desc)}</span><span class="num">${esc(fmtS(e.valor))}</span></div>`).join('') + '</div>' : ''; }})}</div></section>`;
+  h += `<section><div class="btns"><button class="btn tint" data-act="ajusteSaldo">Informar saldo real da conta</button></div>${M.cfg.ajuste && M.cfg.ajuste.data ? `<p class="gf">Saldo real informado: ${esc(fmt(+M.cfg.ajuste.valor))} em ${esc(dLabelY(M.cfg.ajuste.data))}. Daí em diante o calendário parte desse valor.</p>` : `<p class="gf">Conferiu o app do banco? Digite o saldo de hoje e o calendário se corrige.</p>`}</section>`;
+  h += `<section><h3 class="gh"><span>Dia a dia</span><span>◀ = menor saldo</span></h3><div class="group">`;
+  days.forEach(x => {
+    const evs = x.evs.filter(e => e.kind !== 'livre');
+    const liv = x.evs.find(e => e.kind === 'livre');
+    const isMin = mn && x.d === mn.d;
+    if (!evs.length && !isMin && !x.ajustado && x.d !== M.today) return;
+    h += `<div class="row"><span class="grow"><div class="t">${esc(DOWS[dow(x.d)])}, ${esc(dLabel(x.d))}${x.d === M.today ? ' · hoje' : ''}${isMin ? ' ◀' : ''}</div><div class="d">${evs.map(e => esc(e.desc) + ' ' + esc(fmtS(e.valor))).join(' · ') || 'sem contas'}${liv ? ' · gasto livre ' + esc(fmt(-liv.valor)) : ''}${x.ajustado ? ' · saldo real informado' : ''}</div></span><span class="v num ${x.saldo < 0 ? 'neg' : ''}">${esc(fmt(x.saldo))}</span></div>`;
+  });
+  h += `</div></section>`;
+  h += `<section><h3 class="gh"><span>Menor saldo de cada mês</span></h3><div class="tbl-wrap"><table class="t"><thead><tr><th>Mês</th><th>Dia</th><th>Saldo</th></tr></thead><tbody>`;
+  let worst = null; M.months.forEach(m => { const x = cal.minPorMes[m]; if (x && (!worst || x.saldo < worst.saldo)) worst = x; });
+  M.months.forEach(m => { const x = cal.minPorMes[m]; if (!x) return; h += `<tr data-act="cym:${m}" style="cursor:pointer"><td>${ymLabel(m)}</td><td>${dLabel(x.d)}${x === worst ? ' (menor do ano)' : ''}${x.saldo < 0 ? ' ⚠' : ''}</td><td class="${x.saldo < 0 ? 'neg' : ''}">${fmt(x.saldo)}</td></tr>`; });
+  h += `</tbody></table></div></section>`;
+  return h;
+}
+function planoCenarios(M){
+  const base = [40, 50, M.g, 65, 80].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
+  const cs = base.map(cenarioGasto);
+  let h = `<section><div class="note">E se eu gastar mais ou menos por dia? Mesmo plano, mudando só o gasto livre. Sem contar rendimento; a meta muda junto porque o custo de vida muda.</div></section>`;
+  h += `<section><div class="tbl-wrap"><table class="t"><thead><tr><th>Gasto livre/dia</th><th>Sobra média/mês</th><th>Guardado em ${ymLabel(M.end)}</th><th>Meta</th><th>% da meta</th><th>Bate a meta em</th></tr></thead><tbody>`;
+  cs.forEach(c => { h += `<tr class="${c.g === M.g ? 'cur' : ''}"><td>${fmt(c.g)}${c.g === M.g ? ' (seu plano)' : ''}</td><td>${fmt(c.sobraMedia)}</td><td>${fmt(c.guardado)}</td><td>${fmt(c.meta)}</td><td>${pc(c.pct)}</td><td>${c.bate ? ymLabel(c.bate) : 'não bate'}</td></tr>`; });
+  h += `</tbody></table></div></section>`;
+  h += `<section><div class="chart-card"><h4>Guardado no fim do plano por gasto diário</h4><div class="cs">Cada real a menos por dia vira ${esc(fmt(365))} a mais por ano</div>${chart({type:'bar', labels:cs.map(c => 'R$ ' + nf(c.g, 0)), tipLabels:cs.map(c => 'Gasto de ' + fmt(c.g) + '/dia'), series:[{name:'Guardado', color:'--s1', values:cs.map(c => c.guardado)}], h:180, labW:50})}</div></section>`;
+  const zera = (M.rendaMedia - M.fixTotal - M.recTotal - sum(M.anuaisPlano, a => a.valor) / M.months.length) / M.diasMes;
+  h += `<section><div class="alert warn"><span class="dot">!</span><span>Gastando <b>${esc(fmt(zera))}</b> por dia, a sobra zera e nada vai para as caixinhas.</span></div></section>`;
+  h += `<section><div class="btns"><button class="btn tint" data-act="goSub:calc-patrimonio">Abrir a calculadora de 2 anos</button></div></section>`;
+  return h;
+}
+
+/* ===================== VIEW: Mais ===================== */
+function viewMais(){
+  const sub = UI.sub[UI.sub.length - 1];
+  if (sub && PAGES[sub]) return PAGES[sub]();
+  let h = header('Mais');
+  h += `<section><h3 class="gh">Calculadoras</h3><div class="group">`;
+  CALCS.forEach(c => { h += rowNav('goSub:' + c[0], esc(c[1]), esc(c[2]), null, c[3]); });
+  h += `</div></section>`;
+  h += `<section><h3 class="gh">Meu plano</h3><div class="group">`;
+  h += rowNav('goSub:premissas', 'Premissas', 'gasto por dia, teto, meta, rendimento, colchão', null, '⚙️');
+  h += rowNav('goSub:recebimentos', 'Recebimentos', 'regra, valores e datas', null, '📥');
+  h += rowNav('goSub:fixas', 'Contas fixas', list('fixas').length + ' contas no débito/Pix', null, '🏠');
+  h += rowNav('goSub:recorrentes', 'Cobranças no cartão', list('recorrentes').length + ' que se repetem todo mês', null, '🔁');
+  h += rowNav('goSub:cartoes', 'Cartões', C().cartoes.map(k => k.nome).join(', ') || 'nenhum', null, '💳');
+  h += rowNav('goSub:anuais', 'Contas anuais', 'IPVA, licenciamento, anuidades', null, '🗓️');
+  h += rowNav('goSub:extras', 'Extras planejados', 'parcelados, festas, viagens, 13º', null, '💍');
+  h += rowNav('goSub:categorias', 'Categorias do Diário', C().categorias.length + ' categorias', null, '🏷️');
+  h += `</div></section>`;
+  h += `<section><h3 class="gh">Aprender</h3><div class="group">`;
+  h += rowNav('onboard', 'Tutorial rápido', 'o app em 1 minuto', null, '▶️');
+  h += rowNav('goSub:comousar', 'Como usar, passo a passo', 'rotina do dia, da semana e do mês', null, '📖');
+  h += rowNav('goSub:glossario', 'Glossário', 'CDI, fatura, rotativo, reserva…', null, '📚');
+  const np = list('pend').filter(p => !p.feito).length;
+  h += rowNav('goSub:pendencias', 'Pendências do plano', np ? np + ' para resolver' : 'tudo resolvido', null, '✅');
+  h += `</div></section>`;
+  h += `<section><h3 class="gh">Dados</h3><div class="group">`;
+  h += rowNav('goSub:backup', 'Backup e restauração', S.mode === 'db' ? 'sincronizado no seu link privado' : 'modo local (só neste navegador)', null, '💾');
+  h += `</div><p class="gf">${S.mode === 'db' ? 'Seus dados ficam no banco deste link, visível só para você. Abra o mesmo link no celular e no computador.' : 'Abra pelo link do claude.ai para sincronizar entre aparelhos.'}</p></section>`;
+  return h;
+}
+const CALCS = [
+  ['calc-patrimonio', 'Patrimônio em 2 anos', 'três cenários: pouco, médio, muito', '📈'],
+  ['calc-juros', 'Juros compostos', 'quanto vira o que eu guardo', '🧮'],
+  ['calc-meta', 'Quanto guardar para uma meta', 'valor por mês para chegar lá', '🎯'],
+  ['calc-parcelar', 'Parcelar um extra', 'qual jeito de parcelar cabe no plano', '🧾'],
+  ['calc-avista', 'À vista ou parcelado?', 'desconto × rendimento, juros embutidos', '🏷️'],
+  ['calc-fatura', 'Em qual fatura cai?', 'fechamento, vencimento, melhor dia', '💳'],
+  ['calc-rendimento', 'Rendimento da caixinha', '% do CDI → % ao mês líquido', '🏦'],
+  ['calc-reserva', 'Reserva de emergência', 'meta, quanto falta e quando chega', '🛟'],
+  ['calc-habito', 'Custo de um hábito', 'o cafezinho diário em 1, 2 e 5 anos', '☕'],
+  ['calc-limite', 'Custo do limite da conta', 'juros + IOF do cheque especial', '⚠️'],
+  ['calc-ipva', 'IPVA e licenciamento (SP)', 'valor, desconto e mês pela placa', '🚗']
+];
+
+/* ---------- páginas de edição ---------- */
+const PAGES = {};
+PAGES.premissas = () => {
+  const c = C(), M = compute();
+  const r = (k, t, v, d) => rowNav('editCfg:' + k, esc(t), d ? esc(d) : '', esc(v));
+  let h = navbar('Premissas', 'Mais');
+  h += `<section><div class="note">Tudo o que o plano usa para calcular. Toque numa linha para mudar; os números do app inteiro se refazem na hora.</div></section>`;
+  h += `<section><h3 class="gh">Início do plano</h3><div class="group">${r('inicio', 'Primeiro mês', ymLong(c.inicio))}${r('meses', 'Duração', c.meses + ' meses')}${r('saldoContaInicial', 'Saldo na conta no dia 1º', fmt(c.saldoContaInicial))}${r('poteInicial', 'Já guardado no Pote Anuais', fmt(c.poteInicial))}${r('reservaInicial', 'Já guardado na Reserva', fmt(c.reservaInicial))}</div></section>`;
+  h += `<section><h3 class="gh">Suas regras</h3><div class="group">${r('gastoDia', 'Gasto livre por dia', fmt(c.gastoDia), 'comer fora, lazer, farmácia, roupas…')}${r('tetoPct', 'Teto de cartão', nf(c.tetoPct, 1) + '% das entradas', '= ' + fmt(M.teto) + ' por mês')}${r('metaMeses', 'Meta da reserva', c.metaMeses + ' meses de custo de vida', '= ' + fmt(M.meta))}${r('rendimento', 'Rendimento das caixinhas', nf(c.rendimento, 2) + '% ao mês', 'líquido, já sem IR')}${r('colchao', 'Colchão na conta corrente', fmt(c.colchao), 'separado 1 vez no 1º mês')}${r('limiteConta', 'Limite da conta (cheque especial)', fmt(c.limiteConta))}${r('diasMes', 'Dias num mês médio', nf(c.diasMes, 1))}</div>`;
+  h += `<div class="group" style="margin-top:14px"><div class="row"><span class="grow"><div class="t">Usar gastos reais nas projeções</div><div class="d">meses passados usam o Diário; desligado = só o orçamento</div></span><span class="sw"><input type="checkbox" id="p-real" data-act="togReal"${c.usarReal !== false ? ' checked' : ''}><span></span></span></div></div></section>`;
+  h += `<section><h3 class="gh">Veículo</h3><div class="group">${r('finalPlaca', 'Final da placa', c.placa.finalPlaca === '' ? 'não informado' : c.placa.finalPlaca, 'define o mês do licenciamento (SP)')}</div></section>`;
+  h += `<section><h3 class="gh">Custo de vida calculado</h3><div class="group"><div class="row"><span class="grow"><div class="t">Contas fixas</div></span><span class="v num">${fmt(M.fixTotal)}</span></div><div class="row"><span class="grow"><div class="t">Recorrentes no cartão</div></span><span class="v num">${fmt(M.recTotal)}</span></div><div class="row"><span class="grow"><div class="t">Gasto livre (${fmt(M.g)} × ${nf(M.diasMes, 1)})</div></span><span class="v num">${fmt(M.g * M.diasMes)}</span></div><div class="row"><span class="grow"><div class="t"><b>Custo de vida mensal</b></div></span><span class="v num"><b>${fmt(M.custoVida)}</b></span></div></div></section>`;
+  return h;
+};
+const CFG_FIELDS = {
+  inicio:{label:'Primeiro mês', type:'month'}, meses:{label:'Duração (meses)', int:true},
+  saldoContaInicial:{label:'Saldo na conta', money:true, hint:'Quanto tinha na conta corrente no primeiro dia do plano.'},
+  poteInicial:{label:'Pote Anuais', money:true}, reservaInicial:{label:'Reserva', money:true},
+  gastoDia:{label:'Gasto livre/dia', money:true, hint:'Tudo que não é conta fixa nem cobrança recorrente: comer fora, lazer, farmácia, roupas, mercado extra.'},
+  tetoPct:{label:'Teto (%)', money:true, hint:'Faturas acima desse percentual da renda média apertam o mês. 30% é um bom limite.'},
+  metaMeses:{label:'Meses', int:true, hint:'Quantos meses de custo de vida a reserva deve cobrir. Recomendado: 6 (CLT) a 12 (autônomo/PJ).'},
+  rendimento:{label:'% ao mês', money:true, hint:'Rendimento líquido da caixinha. Use a calculadora “Rendimento da caixinha” para converter % do CDI.'},
+  colchao:{label:'Colchão', money:true, hint:'Dinheiro que fica parado na conta corrente para cobrir os dias entre o fim do mês e o primeiro recebimento.'},
+  limiteConta:{label:'Limite', money:true, hint:'Limite do cheque especial. O app avisa quando o saldo previsto fica negativo.'},
+  diasMes:{label:'Dias', money:true, hint:'Média de dias de um mês (365 ÷ 12 = 30,4). Usado no custo de vida.'},
+  finalPlaca:{label:'Final da placa', int:true, hint:'Licenciamento SP: finais 1-2 julho, 3-4 agosto, 5-6 setembro, 7-8 outubro, 9 novembro, 0 dezembro.'}
+};
+function editCfg(k){
+  const f = CFG_FIELDS[k], c = C();
+  const cur = k === 'finalPlaca' ? c.placa.finalPlaca : c[k];
+  const v = f.money ? moneyIn(cur) : cur;
+  openSheet(f.label, `<div class="fg">${fld('cf-v', f.label, v, {money:f.money, int:f.int, type:f.type || 'text', af:true})}</div>${f.hint ? `<p class="fh">${esc(f.hint)}</p>` : ''}`, {onSave: () => {
+    let nv = val('cf-v').trim();
+    if (k === 'finalPlaca') { if (nv !== '' && !/^\d$/.test(nv)) { toast('Digite só o último número da placa.'); return false; } saveCfg({placa:Object.assign({}, c.placa, {finalPlaca:nv})}); toast('Salvo'); return; }
+    if (f.type === 'month') { if (!/^\d{4}-\d{2}$/.test(nv)) { toast('Escolha um mês.'); return false; } }
+    else { nv = f.money ? parseMoney(nv) : parseInt(nv, 10); if (!isSet(nv) || isNaN(nv) || nv < 0) { toast('Digite um número válido.'); return false; } }
+    if (k === 'meses' && (nv < 1 || nv > 60)) { toast('Use de 1 a 60 meses.'); return false; }
+    saveCfg({[k]:nv}); toast('Salvo');
+  }});
+}
+
+PAGES.recebimentos = () => {
+  const c = C(), r = c.receb, M = compute();
+  let h = navbar('Recebimentos', 'Mais');
+  h += `<section><h3 class="gh">Regra</h3><div class="group">`;
+  h += rowNav('editReceb2:regra', 'Como você recebe', '', r.regra === 'fixos' ? 'dias fixos' : 'a cada ' + r.intervalo + ' dias');
+  if (r.regra === 'fixos') h += rowNav('editReceb2:diasFixos', 'Dias do mês', '', (r.diasFixos || []).join(' e '));
+  else h += rowNav('editReceb2:ancora', 'Primeiro recebimento', '', r.ancora ? dLabelY(r.ancora) : 'definir') + rowNav('editReceb2:intervalo', 'Intervalo', '', r.intervalo + ' dias');
+  h += rowNav('editReceb2:valorPadrao', 'Valor padrão', 'usado quando você ainda não sabe o valor real', fmt(r.valorPadrao));
+  h += rowNav('editReceb2:primeiros', 'Valores já conhecidos', 'dos primeiros recebimentos, em ordem', (r.primeiros || []).map(v => fmt0(+v)).join(', ') || 'nenhum');
+  h += rowNav('editReceb2:regraFeriado', 'Se cair em feriado', '', r.regraFeriado === 'util' ? 'próximo dia útil' : 'dia seguinte');
+  h += rowNav('editReceb2:feriados', 'Feriados considerados', '', (r.feriados || []).length + ' datas');
+  h += `</div></section>`;
+  h += `<section><h3 class="gh"><span>Os ${M.recPlan.length} recebimentos do plano</span><span class="num">${fmt(sum(M.recPlan, x => x.valor))}</span></h3><div class="group">`;
+  M.recPlan.forEach(x => { h += `<div class="row">${checkBtn(x.recebido, 'togReceb:' + x.id, 'Marcar recebido')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editReceb:${x.id}"><div class="t">${pad(x.n)} · ${esc(DOWS[dow(x.data)])}, ${esc(dLabelY(x.data))}</div><div class="d">${esc(ymLabel(x.ym))}${x.data !== x.prevista ? ' · previsto ' + esc(dLabel(x.prevista)) : ''} · ${x.real ? 'valor real' : 'previsto'}</div></button><span class="v num">${esc(fmt(x.valor))}</span></div>`; });
+  h += `</div><p class="gf">Média de ${fmt(M.rendaMedia)} por mês. Pagamento que escorrega para depois do fim do plano fica fora do total.</p></section>`;
+  return h;
+};
+function editReceb2(k){
+  const c = C(), r = clone(c.receb);
+  let body = '', save;
+  if (k === 'regra') { body = `<div class="fg">${sel('rr', 'Regra', r.regra, [['intervalo', 'A cada N dias'], ['fixos', 'Dias fixos do mês']])}</div><p class="fh">“A cada N dias” conta a partir do primeiro recebimento (ex.: semana sim, semana não = 14 dias). “Dias fixos” = sempre nos mesmos dias do mês.</p>`; save = () => { r.regra = val('rr'); }; }
+  else if (k === 'ancora') { body = `<div class="fg">${fld('rr', 'Data', r.ancora, {type:'date'})}</div>`; save = () => { if (!val('rr')) { toast('Escolha a data.'); return false; } r.ancora = val('rr'); }; }
+  else if (k === 'intervalo') { body = `<div class="fg">${fld('rr', 'Dias', r.intervalo, {int:true, af:true})}</div><p class="fh">14 = semana sim, semana não. 15 = quinzenal. 7 = semanal. 30 = mensal.</p>`; save = () => { const n = parseInt(val('rr'), 10); if (!(n > 0)) { toast('Digite um número de dias.'); return false; } r.intervalo = n; }; }
+  else if (k === 'diasFixos') { body = `<div class="fg">${fld('rr', 'Dias', (r.diasFixos || []).join(', '), {ph:'ex.: 5, 20', af:true})}</div>`; save = () => { const ds = val('rr').split(/[^\d]+/).map(Number).filter(x => x >= 1 && x <= 31); if (!ds.length) { toast('Digite pelo menos um dia.'); return false; } r.diasFixos = ds; }; }
+  else if (k === 'valorPadrao') { body = `<div class="fg">${fld('rr', 'Valor', moneyIn(r.valorPadrao), {money:true, af:true})}</div><p class="fh">Quando o valor varia, use a média dos últimos pagamentos. Depois digite o valor real de cada um quando cair.</p>`; save = () => { const v = mval('rr'); if (v == null || v < 0) { toast('Digite um valor.'); return false; } r.valorPadrao = v; }; }
+  else if (k === 'primeiros') { body = `<div class="fg">${fld('rr', 'Valores', (r.primeiros || []).map(v => nf(+v, 2)).join('; '), {ph:'ex.: 4.200,00; 3.500,00', af:true, col:true})}</div><p class="fh">Separe por ponto e vírgula. Valem para o 1º, 2º, 3º… recebimento; os demais usam o valor padrão.</p>`; save = () => { r.primeiros = val('rr').split(';').map(s => parseMoney(s)).filter(v => !isNaN(v)); }; }
+  else if (k === 'regraFeriado') { body = `<div class="fg">${sel('rr', 'Feriado', r.regraFeriado, [['dia', 'Dia seguinte'], ['util', 'Próximo dia útil (pula sábado e domingo)']])}</div>`; save = () => { r.regraFeriado = val('rr'); }; }
+  else if (k === 'feriados') { body = `<div class="fg"><div class="f col"><label for="rr">Datas (dd/mm/aaaa, uma por linha)</label><textarea class="in" id="rr" rows="8">${esc((r.feriados || []).map(d => dLabelY(d).replace(/\/(\d\d)$/, '/20$1')).join('\n'))}</textarea></div></div>`; save = () => { r.feriados = val('rr').split(/\s+/).map(s => { const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? m[3] + '-' + pad(m[2]) + '-' + pad(m[1]) : null; }).filter(Boolean).sort(); }; }
+  openSheet('Recebimentos', body, {onSave: () => { if (save() === false) return false; saveCfg({receb:r}); toast('Salvo'); }});
+}
+function sheetReceb(id){
+  const M = compute(), x = M.rec.find(q => q.id === id); if (!x) return;
+  const o = S.data.receb[id] || {};
+  openSheet('Recebimento ' + pad(x.n), `<div class="amount"><span>R$</span><input id="rc-v" class="num" inputmode="decimal" placeholder="${esc(nf(x.padrao, 2))}" value="${esc(isSet(o.valor) ? moneyIn(o.valor) : '')}" autofocus aria-label="Valor real"></div><p class="fh" style="text-align:center">Previsto: ${esc(fmt(x.padrao))}. Deixe vazio para usar o previsto.</p><div class="fg">${fld('rc-d', 'Data real', o.data || '', {type:'date'})}${swf('rc-ok', 'Já caiu na conta', !!o.recebido)}</div><p class="fh">Data prevista: ${esc(dayLong(x.prevista))}${x.prevista !== shiftDate(C(), x.prevista) ? ' (feriado → ' + esc(dLabel(shiftDate(C(), x.prevista))) + ')' : ''}.</p>`, {onSave: () => {
+    const v = val('rc-v').trim() === '' ? null : mval('rc-v');
+    if (val('rc-v').trim() !== '' && v == null) { toast('Valor inválido.'); return false; }
+    const doc = {recebido:chk('rc-ok')}; if (v != null) doc.valor = v; if (val('rc-d')) doc.data = val('rc-d'); if (o.obs) doc.obs = o.obs;
+    put('receb', id, doc); toast('Salvo');
+  }});
+}
+
+function listPage(title, coll, rowsHtml, addAct, note){
+  let h = navbar(title, 'Mais');
+  if (note) h += `<section><div class="note">${note}</div></section>`;
+  h += `<section><div class="group">${rowsHtml || '<div class="empty">Nada cadastrado ainda.</div>'}</div><div class="btns" style="margin-top:12px"><button class="btn tint" data-act="${addAct}">Adicionar</button></div></section>`;
+  return h;
+}
+PAGES.fixas = () => {
+  const fs = list('fixas').sort(byOrder);
+  const tot = sum(fs.filter(f => f.ativa !== false), f => f.valor);
+  return listPage('Contas fixas', 'fixas', fs.map(f => rowNav('editFixa:' + f.id, esc(f.nome) + (f.ativa === false ? ' <span class="pill">pausada</span>' : ''), 'dia ' + esc((f.dias || [f.dia]).join(', ')) + ' · ' + esc(f.forma || 'Débito/Pix') + (f.obs ? ' · ' + esc(f.obs) : ''), esc(fmt(+f.valor)))).join(''), 'editFixa:', `Contas pagas todo mês no débito ou Pix. Total: <b>${esc(fmt(tot))}</b> por mês. Gasto dividido em vários dias (ex.: combustível) usa vários dias separados por vírgula.`);
+};
+function sheetFixa(id){
+  const f = id ? clone(S.data.fixas[id]) : {nome:'', valor:'', dias:[5], forma:'Débito/Pix', ativa:true, obs:''};
+  openSheet(id ? 'Conta fixa' : 'Nova conta fixa', `<div class="fg">${fld('fx-n', 'Nome', f.nome, {af:!id})}${fld('fx-v', 'Valor/mês', moneyIn(f.valor), {money:true})}${fld('fx-d', 'Dia(s)', (f.dias || [f.dia || 1]).join(', '), {ph:'ex.: 5 ou 3, 10, 17, 24'})}${fld('fx-f', 'Forma', f.forma)}${swf('fx-a', 'Ativa', f.ativa !== false)}</div><div class="fg">${fld('fx-o', 'Observação', f.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:fixas:${esc(id)}">Apagar conta</button></div>` : ''}`, {onSave: () => {
+    const v = mval('fx-v'), nm = val('fx-n').trim(); const ds = val('fx-d').split(/[^\d]+/).map(Number).filter(x => x >= 1 && x <= 31);
+    if (!nm) { toast('Dê um nome.'); return false; } if (v == null) { toast('Digite o valor.'); return false; } if (!ds.length) { toast('Digite o dia.'); return false; }
+    put('fixas', id || uid(), Object.assign(f, {nome:nm, valor:v, dias:ds, forma:val('fx-f').trim(), ativa:chk('fx-a'), obs:val('fx-o').trim(), ordem:f.ordem || Date.now()})); toast('Salvo');
+  }});
+}
+PAGES.recorrentes = () => {
+  const c = C(), rs = list('recorrentes').sort(byOrder);
+  const tot = sum(rs.filter(f => f.ativa !== false), f => f.valor);
+  return listPage('Cobranças no cartão', 'recorrentes', rs.map(f => { const k = cardById(c, f.cartao); return rowNav('editRec:' + f.id, esc(f.nome) + (f.ativa === false ? ' <span class="pill">pausada</span>' : ''), esc(k ? k.nome : 'sem cartão') + ' · compra dia ' + esc(f.dia) + (k ? ' · cai na fatura seguinte ao fechamento (dia ' + k.fecha + ')' : ''), esc(fmt(+f.valor))); }).join(''), 'editRec:', `Assinaturas, academia, compras quinzenais: o que passa no cartão todo mês. Total: <b>${esc(fmt(tot))}</b>. Contam no mês da compra, e o app calcula em qual fatura cada uma cai.`);
+};
+function sheetRec(id){
+  const c = C();
+  const f = id ? clone(S.data.recorrentes[id]) : {nome:'', valor:'', dia:1, cartao:(c.cartoes[0] || {}).id, ativa:true, obs:''};
+  openSheet(id ? 'Cobrança no cartão' : 'Nova cobrança', `<div class="fg">${fld('rc-n', 'Nome', f.nome, {af:!id})}${fld('rc-v', 'Valor/mês', moneyIn(f.valor), {money:true})}${fld('rc-d', 'Dia da compra', f.dia, {int:true})}${sel('rc-k', 'Cartão', f.cartao, c.cartoes.map(k => [k.id, k.nome]))}${swf('rc-a', 'Ativa', f.ativa !== false)}</div><div class="fg">${fld('rc-o', 'Observação', f.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:recorrentes:${esc(id)}">Apagar cobrança</button></div>` : ''}`, {onSave: () => {
+    const v = mval('rc-v'), nm = val('rc-n').trim(), d = parseInt(val('rc-d'), 10);
+    if (!nm || v == null || !(d >= 1 && d <= 31)) { toast('Preencha nome, valor e dia.'); return false; }
+    if (!c.cartoes.length) { toast('Cadastre um cartão antes.'); return false; }
+    put('recorrentes', id || uid(), Object.assign(f, {nome:nm, valor:v, dia:d, cartao:val('rc-k'), ativa:chk('rc-a'), obs:val('rc-o').trim(), ordem:f.ordem || Date.now()})); toast('Salvo');
+  }});
+}
+PAGES.cartoes = () => {
+  const c = C();
+  return listPage('Cartões', 'cartoes', c.cartoes.map((k, i) => rowNav('editCartao:' + i, esc(k.nome), 'fecha dia ' + k.fecha + ' · vence dia ' + k.vence + (k.antigo ? ' · fatura anterior ao plano ' + esc(fmt(+k.antigo)) : ''), '')).join(''), 'editCartao:', 'O dia de fechamento decide em qual fatura cada compra cai. Compra no dia do fechamento ou depois vai para a fatura seguinte.');
+};
+function sheetCartao(i){
+  const c = C(), isNew = i === '' || i == null; const k = isNew ? {id:'', nome:'', fecha:1, vence:10, antigo:0} : clone(c.cartoes[+i]);
+  openSheet(isNew ? 'Novo cartão' : k.nome, `<div class="fg">${fld('ct-n', 'Nome', k.nome, {af:isNew})}${fld('ct-f', 'Dia do fechamento', k.fecha, {int:true})}${fld('ct-v', 'Dia do vencimento', k.vence, {int:true})}</div><div class="fg">${fld('ct-a', 'Já devido no 1º mês', moneyIn(k.antigo), {money:true})}</div><p class="fh">Valor das compras feitas antes do plano que vencem no primeiro mês (fatura já fechada + compras recorrentes do mês anterior).</p>${!isNew ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delCartao:${i}">Apagar cartão</button></div>` : ''}`, {onSave: () => {
+    const nm = val('ct-n').trim(), f = parseInt(val('ct-f'), 10), v = parseInt(val('ct-v'), 10), a = mval('ct-a') || 0;
+    if (!nm || !(f >= 1 && f <= 31) || !(v >= 1 && v <= 31)) { toast('Preencha nome e dias de 1 a 31.'); return false; }
+    const cs = clone(c.cartoes); const nk = Object.assign(k, {nome:nm, fecha:f, vence:v, antigo:a}); if (!nk.id) nk.id = nm.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') || uid();
+    if (isNew) { if (cs.some(x => x.id === nk.id)) nk.id += uid().slice(-3); cs.push(nk); } else cs[+i] = nk;
+    saveCfg({cartoes:cs}); toast('Salvo');
+  }});
+}
+PAGES.anuais = () => {
+  const c = C(), as = list('anuais').map(a => Object.assign(a, {mesCalc:anualMes(c, a)})).sort((a, b) => String(a.mesCalc).localeCompare(String(b.mesCalc)));
+  return listPage('Contas anuais', 'anuais', as.map(a => rowNav('editAnual:' + a.id, esc(a.nome) + (a.pago ? ' <span class="pill ok">paga</span>' : ''), esc(a.mesCalc ? ymLong(a.mesCalc) : 'sem mês') + (a.placaAuto ? ' · mês pela placa' : '') + (a.obs ? ' · ' + esc(a.obs) : ''), esc(fmt(+a.valor)))).join(''), 'editAnual:', 'Contas que chegam uma vez por ano (IPVA, licenciamento, anuidade do conselho, seguro do carro, IPTU, material escolar). Saem do <b>Pote Anuais</b>: a sobra de cada mês enche o Pote primeiro, só o necessário para pagar todas elas.');
+};
+function sheetAnual(id){
+  const a = id ? clone(S.data.anuais[id]) : {nome:'', valor:'', mes:ymAdd(C().inicio, 3), pago:false, obs:'', placaAuto:false};
+  openSheet(id ? 'Conta anual' : 'Nova conta anual', `<div class="fg">${fld('an-n', 'Nome', a.nome, {af:!id})}${fld('an-v', 'Valor', moneyIn(a.valor), {money:true})}${fld('an-m', 'Mês', a.mes, {type:'month'})}${swf('an-p', 'Mês pela placa (licenciamento)', !!a.placaAuto)}${swf('an-ok', 'Já paga', !!a.pago)}</div><div class="fg">${fld('an-o', 'Observação', a.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:anuais:${esc(id)}">Apagar conta</button></div>` : ''}`, {onSave: () => {
+    const v = mval('an-v'), nm = val('an-n').trim(), m = val('an-m');
+    if (!nm || v == null || !m) { toast('Preencha nome, valor e mês.'); return false; }
+    put('anuais', id || uid(), Object.assign(a, {nome:nm, valor:v, mes:m, placaAuto:chk('an-p'), pago:chk('an-ok'), obs:val('an-o').trim()})); toast('Salvo');
+  }});
+}
+PAGES.extras = () => {
+  const es = list('extras').sort((a, b) => String(a.mesInicio).localeCompare(String(b.mesInicio)));
+  return listPage('Extras planejados', 'extras', es.map(e => rowNav('editExtra:' + e.id, esc(e.nome) + ' <span class="pill ' + (e.tipo === 'entrada' ? 'ok' : 'info') + '">' + (e.tipo === 'entrada' ? 'entrada' : 'gasto') + '</span>', (e.parcelas > 1 ? e.parcelas + 'x de ' + esc(fmt((+e.total || 0) / e.parcelas)) + ' a partir de ' : 'em ') + esc(e.mesInicio ? ymLabel(e.mesInicio) : '?') + ' · ' + esc(e.forma || 'Pix'), esc(fmt(+e.total)))).join(''), 'novoExtra:saida:', 'Gastos e entradas que não se repetem: compra parcelada no Pix, festas, presentes, viagem, 13º, bônus, freelas. As parcelas saem (ou entram) na sobra do mês.');
+};
+function sheetExtra(id, tipo, ym){
+  const e = id ? clone(S.data.extras[id]) : {nome:'', tipo:tipo || 'saida', total:'', parcelas:1, mesInicio:ym || C().inicio, dia:0, forma:tipo === 'entrada' ? 'Conta' : 'Pix', pagos:{}, valores:null};
+  openSheet(id ? e.nome : (e.tipo === 'entrada' ? 'Nova entrada extra' : 'Novo gasto extra'), `<div class="seg" id="ex-t" style="margin-top:8px"><button type="button" data-t="saida" class="${e.tipo !== 'entrada' ? 'on' : ''}">Gasto</button><button type="button" data-t="entrada" class="${e.tipo === 'entrada' ? 'on' : ''}">Entrada</button></div><div class="fg">${fld('ex-n', 'Nome', e.nome, {af:!id, ph:'ex.: 13º salário, viagem'})}${fld('ex-v', 'Valor total', moneyIn(e.total), {money:true})}${fld('ex-p', 'Parcelas', e.parcelas, {int:true})}${fld('ex-m', '1ª parcela em', e.mesInicio, {type:'month'})}${fld('ex-d', 'Dia (0 = último recebimento)', e.dia, {int:true})}${fld('ex-f', 'Forma', e.forma)}</div><div class="fg"><div class="f col"><label for="ex-vs">Valores diferentes por parcela (opcional)</label><input class="in num" id="ex-vs" inputmode="decimal" placeholder="ex.: 2.000; 1.500; 1.000" value="${esc(Array.isArray(e.valores) ? e.valores.map(v => nf(+v, 2)).join('; ') : '')}"></div></div><p class="fh">Dia 0 = no dia do último recebimento do mês, o mais seguro: o dinheiro já entrou e as contas já saíram. Para comparar formas de parcelar, use a calculadora “Parcelar um extra”.</p>${id ? `<div class="btns" style="margin-top:22px"><button class="btn tint" data-act="goSub:calc-parcelar">Comparar parcelamentos</button><button class="btn danger" data-act="delDoc:extras:${esc(id)}">Apagar</button></div>` : ''}`, {
+    onMount: b => { b.querySelector('#ex-t').onclick = ev => { const t = ev.target.closest('[data-t]'); if (!t) return; e.tipo = t.dataset.t; $$('#ex-t button').forEach(x => x.classList.toggle('on', x === t)); }; },
+    onSave: () => {
+      const v = mval('ex-v'), nm = val('ex-n').trim(), p = parseInt(val('ex-p'), 10), m = val('ex-m'), d = parseInt(val('ex-d') || '0', 10);
+      if (!nm || v == null || !(p >= 1 && p <= 60) || !m) { toast('Preencha nome, valor, parcelas e mês.'); return false; }
+      const vs = val('ex-vs').trim() ? val('ex-vs').split(';').map(s => parseMoney(s)).filter(x => !isNaN(x)) : null;
+      put('extras', id || uid(), Object.assign(e, {nome:nm, total:v, parcelas:p, mesInicio:m, dia:isNaN(d) ? 0 : d, forma:val('ex-f').trim(), valores:vs && vs.length ? vs : null})); toast('Salvo');
+    }});
+}
+PAGES.categorias = () => {
+  const c = C();
+  return listPage('Categorias do Diário', 'categorias', c.categorias.map((k, i) => `<button class="row ic" data-act="editCat:${i}"><span class="ico">${esc(k.emoji)}</span><span class="grow"><div class="t">${esc(k.nome)}</div></span>${ICON.chev}</button>`).join(''), 'editCat:', 'As categorias aparecem ao lançar um gasto e no gráfico “Onde foi o dinheiro”.');
+};
+function sheetCat(i){
+  const c = C(), isNew = i === '' || i == null, k = isNew ? {id:'', nome:'', emoji:'🏷️'} : clone(c.categorias[+i]);
+  openSheet(isNew ? 'Nova categoria' : k.nome, `<div class="fg">${fld('ca-e', 'Ícone (emoji)', k.emoji)}${fld('ca-n', 'Nome', k.nome, {af:true})}</div>${!isNew ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delCat:${i}">Apagar categoria</button></div><p class="fh">Lançamentos antigos desta categoria continuam salvos.</p>` : ''}`, {onSave: () => {
+    const nm = val('ca-n').trim(); if (!nm) { toast('Dê um nome.'); return false; }
+    const cs = clone(c.categorias); const nk = Object.assign(k, {nome:nm, emoji:val('ca-e').trim() || '🏷️'}); if (!nk.id) nk.id = uid();
+    if (isNew) cs.push(nk); else cs[+i] = nk; saveCfg({categorias:cs}); toast('Salvo');
+  }});
+}
+PAGES.pendencias = () => {
+  const ps = list('pend').sort((a, b) => (!!a.feito - !!b.feito) || ((+a.ordem || 0) - (+b.ordem || 0)));
+  let h = navbar('Pendências', 'Mais');
+  h += `<section><div class="note">Pontos que ainda mudam o plano. Resolva e marque; se algum número mudar, atualize nas Premissas.</div></section><section><div class="group">`;
+  if (!ps.length) h += `<div class="empty">Nenhuma pendência.</div>`;
+  ps.forEach(p => { h += `<div class="row">${checkBtn(!!p.feito, 'togPend:' + p.id, 'Marcar resolvida')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editPend:${esc(p.id)}"><div class="t" style="${p.feito ? 'color:var(--label2);text-decoration:line-through' : ''}">${esc(p.texto)}</div>${p.obs ? `<div class="d">${esc(p.obs)}</div>` : ''}</button></div>`; });
+  h += `</div><div class="btns" style="margin-top:12px"><button class="btn tint" data-act="editPend:">Adicionar pendência</button></div></section>`;
+  return h;
+};
+function sheetPend(id){
+  const p = id ? clone(S.data.pend[id]) : {texto:'', obs:'', feito:false};
+  openSheet(id ? 'Pendência' : 'Nova pendência', `<div class="fg"><div class="f col"><label for="pd-t">O que resolver</label><textarea class="in" id="pd-t" rows="3" autofocus>${esc(p.texto)}</textarea></div>${fld('pd-o', 'Observação', p.obs, {col:true})}</div>${id ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delDoc:pend:${esc(id)}">Apagar</button></div>` : ''}`, {onSave: () => {
+    const t = val('pd-t').trim(); if (!t) { toast('Escreva a pendência.'); return false; }
+    put('pend', id || uid(), Object.assign(p, {texto:t, obs:val('pd-o').trim(), ordem:p.ordem || Date.now()})); toast('Salvo');
+  }});
+}
+
+/* ---------- ajuda ---------- */
+PAGES.comousar = () => navbar('Como usar', 'Mais') + `<section><div class="prose">
+<h3>A ideia em uma frase</h3><p>Você decide quanto pode gastar por dia com o que é livre. O resto (contas fixas, cartão, contas anuais) já está no plano, e a sobra de cada mês vai para duas caixinhas: o <b>Pote Anuais</b> e a <b>Reserva de emergência</b>.</p>
+<h3>Todo dia ou a cada 2–3 dias (1 minuto)</h3><ol><li>Toque em <b>Lançar gasto</b> na aba Hoje.</li><li>Digite o valor, escolha a categoria e como pagou (débito/Pix, cartão ou dinheiro).</li><li>Se foi no cartão, o app mostra em qual fatura cai.</li><li>Olhe o número grande: <b>pode gastar por dia</b>. Se ficar laranja ou vermelho, segure os próximos dias.</li></ol><p>Lance só o gasto livre: comer fora, delivery, lazer, farmácia, roupas, mercado extra, presentes. <b>Não lance</b> aluguel, luz ou as cobranças que se repetem no cartão: elas já estão no plano.</p>
+<h3>Quando o dinheiro cair ou uma conta for paga</h3><ol><li>Na aba <b>Hoje</b>, em “Próximos 10 dias”, toque no círculo para marcar como pago ou recebido.</li><li>Na aba <b>Mês</b>, toque no nome do recebimento para digitar o valor real (quando for diferente do previsto).</li><li>Quando a fatura fechar, toque nela e digite o valor real.</li></ol>
+<h3>Uma vez por semana</h3><ol><li>Abra o app do banco e compare com o app: em <b>Plano → Calendário</b>, toque em “Informar saldo real da conta”.</li><li>Veja o <b>menor saldo do mês</b>. Se ficar perto de zero, adie compras até o próximo recebimento.</li></ol>
+<h3>No último dia do mês</h3><ol><li>Abra a aba <b>Mês</b> e role até “Fim do mês”.</li><li>Transfira o valor indicado: primeiro para o Pote Anuais, o resto para a Reserva.</li><li>Toque em <b>Fechar o mês</b> e digite os saldos reais das duas caixinhas. O plano dos meses seguintes parte desses valores.</li></ol>
+<h3>Quando chegar uma conta anual</h3><p>IPVA, licenciamento, anuidade: pague com o dinheiro do <b>Pote Anuais</b>, não da conta corrente. Marque como paga em Mais → Contas anuais.</p>
+<h3>Antes de uma compra grande</h3><ol><li>Use <b>Mais → Parcelar um extra</b> para ver qual jeito cabe sem deixar as caixinhas negativas.</li><li>Use <b>À vista ou parcelado?</b> para saber se o desconto compensa.</li><li>Cadastre em Mais → Extras planejados.</li></ol>
+<h3>Para ver o futuro</h3><p><b>Plano → Resumo</b> mostra os 12 meses e as caixinhas crescendo. <b>Cenários</b> mostra o que muda gastando mais ou menos por dia. <b>Patrimônio em 2 anos</b> projeta três cenários com juros compostos.</p>
+<h3>Instalar como app no iPhone</h3><ol><li>Abra este link no Safari.</li><li>Toque em Compartilhar (quadrado com seta).</li><li>Escolha “Adicionar à Tela de Início”.</li></ol>
+</div></section>`;
+const GLOSS = [
+  ['Gasto livre', 'Tudo que você escolhe gastar no dia a dia e que não é conta fixa: comer fora, lazer, farmácia, roupas. É a principal alavanca do plano.'],
+  ['Sobra do mês', 'Entradas − saídas. É o que vai para as caixinhas no fim do mês.'],
+  ['Pote Anuais', 'Caixinha para as contas que chegam uma vez por ano. Recebe só o necessário para pagar todas elas até o fim do plano.'],
+  ['Reserva de emergência', 'Dinheiro para imprevistos (perda de renda, saúde, carro). A meta é cobrir alguns meses de custo de vida. Deve ficar num lugar seguro e com resgate imediato.'],
+  ['Colchão', 'Um valor fixo que fica parado na conta corrente para cobrir os dias entre o fim do mês e o próximo recebimento, evitando entrar no limite.'],
+  ['Custo de vida', 'Quanto você gasta num mês típico: contas fixas + cobranças do cartão + gasto livre.'],
+  ['Fechamento da fatura', 'Dia em que o cartão para de somar compras naquela fatura. Compras a partir desse dia vão para a próxima.'],
+  ['Vencimento', 'Dia de pagar a fatura. Fica alguns dias depois do fechamento.'],
+  ['Melhor dia de compra', 'O dia do fechamento: comprando nele, você só paga na fatura seguinte (até ~40 dias depois).'],
+  ['Competência × caixa', 'Competência é quando você compra; caixa é quando o dinheiro sai. O plano conta a compra no cartão no mês em que você compra, para o dinheiro da fatura já nascer separado.'],
+  ['Rotativo do cartão', 'Pagar menos que o total da fatura. Os juros estão entre os mais altos do país (muitas vezes acima de 10% ao mês). Evite sempre.'],
+  ['Cheque especial / limite da conta', 'Crédito automático quando a conta fica negativa. Tem juros altos + IOF. O calendário avisa antes de acontecer.'],
+  ['IOF', 'Imposto sobre operações de crédito. No cheque especial: 0,38% + 0,0082% por dia.'],
+  ['Selic', 'Taxa básica de juros do Brasil, definida pelo Copom. Guia o rendimento das aplicações conservadoras.'],
+  ['CDI', 'Taxa que os bancos usam entre si; anda colada na Selic. Caixinhas e CDBs rendem um percentual do CDI (ex.: 100% do CDI).'],
+  ['IR regressivo', 'Imposto de renda sobre o rendimento de CDB, caixinhas e Tesouro: 22,5% até 180 dias, 20% até 360, 17,5% até 720 e 15% acima disso.'],
+  ['FGC', 'Fundo Garantidor de Créditos: protege até R$ 250 mil por CPF por instituição em CDBs, caixinhas e poupança, caso o banco quebre.'],
+  ['Juros compostos', 'Juros sobre juros: o rendimento de um mês também rende nos meses seguintes. Quanto mais tempo, maior o efeito.'],
+  ['Juros embutidos', 'Quando o parcelado “sem juros” custa mais que o à vista com desconto, a diferença é juros. A calculadora “À vista ou parcelado?” mostra a taxa.'],
+  ['Regra 50/30/20', 'Referência clássica: 50% da renda para necessidades, 30% para desejos, 20% para guardar. Seu plano pode ser mais agressivo na parte guardada.'],
+  ['IPVA', 'Imposto anual do carro. Em SP (2026): 4% do valor venal para carro de passeio, com desconto de 3% à vista em janeiro ou até 5 parcelas. Carros com 20 anos ou mais são isentos.'],
+  ['Licenciamento', 'Taxa anual para o carro circular. Em SP o mês depende do final da placa (1-2 julho … 0 dezembro).']
+];
+PAGES.glossario = () => navbar('Glossário', 'Mais') + `<section><div class="group dl">${GLOSS.map(g => `<div class="row" style="display:block"><div class="t">${esc(g[0])}</div><div class="d" style="font-size:15px;margin-top:3px;line-height:1.45">${esc(g[1])}</div></div>`).join('')}</div><p class="gf">Valores e regras de impostos mudam todo ano. Confira os de 2027 quando forem publicados.</p></section>`;
+
+/* ---------- backup ---------- */
+PAGES.backup = () => {
+  let h = navbar('Backup', 'Mais');
+  h += `<section><div class="note">${S.mode === 'db' ? 'Os dados já ficam salvos no seu link privado. Faça um backup de vez em quando para ter uma cópia fora dele.' : '<b>Modo local:</b> os dados ficam só neste navegador. Faça backup com frequência.'}</div></section>`;
+  h += `<section><h3 class="gh">Exportar</h3><div class="btns"><button class="btn" data-act="exportar">Baixar arquivo de backup</button><button class="btn tint" data-act="copiarBackup">Copiar backup (texto)</button></div></section>`;
+  h += `<section><h3 class="gh">Restaurar</h3><div class="fg" style="margin-top:0"><div class="f col"><label for="bk-file">Arquivo .json</label><input type="file" id="bk-file" accept="application/json,.json" class="in"></div><div class="f col"><label for="bk-txt">ou cole o texto do backup</label><textarea class="in" id="bk-txt" rows="4" placeholder="{ … }"></textarea></div></div><div class="btns" style="margin-top:10px"><button class="btn tint" data-act="importar">Restaurar backup</button></div><p class="gf">Restaurar substitui os dados atuais pelos do backup.</p></section>`;
+  h += `<section><h3 class="gh">Zona de perigo</h3><div class="btns"><button class="btn danger" data-act="apagarTudo">Apagar todos os lançamentos do Diário</button></div></section>`;
+  return h;
+};
+function backupJson(){ return JSON.stringify({app:'plano-financeiro', versao:1, exportado:new Date().toISOString(), dados:S.data}, null, 1); }
+async function restore(txt){
+  let j; try { j = JSON.parse(txt); } catch (e) { toast('Arquivo inválido.'); return; }
+  const d = j && j.dados; if (!d || typeof d !== 'object') { toast('Este arquivo não é um backup do app.'); return; }
+  let n = 0;
+  for (const c of COLS) {
+    const src = d[c] || {};
+    for (const id of Object.keys(S.data[c])) if (!(id in src)) { await del(c, id); }
+    for (const [id, v] of Object.entries(src)) { await put(c, id, v); n++; }
+  }
+  toast('Backup restaurado (' + n + ' registros)');
+}
+
+/* ---------- calculadoras ---------- */
+function calcPage(id, title, inputs, out){
+  return navbar(title, 'Mais') + `<section><div class="fg" style="margin-top:0" id="calc-in" data-calc="${id}">${inputs}</div><div id="calc-out">${out}</div></section>`;
+}
+const cget = (id, def) => { const v = UI.calc[id]; return v == null ? def : v; };
+const cin = (id, label, def, o) => fld(id, label, cget(id, def), Object.assign({money:true}, o || {}));
+function cnum(id, def){ const v = parseMoney(cget(id, def)); return isNaN(v) ? 0 : v; }
+
+PAGES['calc-patrimonio'] = () => {
+  const M = compute({pure:true}), c = M.cfg;
+  const inputs = cin('pp', 'Gasto/dia (pouco)', nf(c.cenarios.pouco.gasto)) + cin('pm', 'Gasto/dia (médio)', nf(M.g)) + cin('pmu', 'Gasto/dia (muito)', nf(c.cenarios.muito.gasto)) + cin('pmc', 'Cortes extras/mês (muito)', nf(c.cenarios.muito.cortes || 0)) + cin('pz', 'Prazo (meses)', c.cenarios.prazo || 24, {money:false, int:true}) + cin('pr', 'Rendimento % a.m.', nf(c.rendimento));
+  return calcPage('patrimonio', 'Patrimônio em 2 anos', inputs, calcPatrimonioOut());
+};
+function calcPatrimonioOut(){
+  const M = compute({pure:true}), c = M.cfg;
+  const prazo = Math.max(1, Math.min(120, Math.round(cnum('pz', c.cenarios.prazo || 24))));
+  const r = cnum('pr', c.rendimento) / 100;
+  const sc = [
+    {k:'MÉDIO', d:'segue o plano', g:cnum('pm', M.g), cortes:0, color:'--s1'},
+    {k:'POUCO', d:'gasta mais', g:cnum('pp', c.cenarios.pouco.gasto), cortes:0, color:'--s2'},
+    {k:'MUITO', d:'aperta o cinto', g:cnum('pmu', c.cenarios.muito.gasto), cortes:cnum('pmc', c.cenarios.muito.cortes || 0), color:'--s3'}
+  ].map(s => Object.assign(s, projPatrimonio(M, s.g, s.cortes, prazo, r)));
+  const labels = Array.from({length:prazo + 1}, (_, i) => ymLabel(ymAdd(M.start, i)));
+  let h = `<div class="chart-card" style="margin-top:14px"><h4>Patrimônio mês a mês</h4><div class="cs">Caixinhas somadas, partindo de ${esc(fmt(sc[0].inicio))} (faturas antigas e extras já descontados)</div>${chart({type:'line', labels, series:sc.map(s => ({name:s.k + ' (' + fmt0(s.g) + '/dia)', color:s.color, values:s.serie, endDot:true})), h:210})}</div>`;
+  h += `<div class="tbl-wrap" style="margin-top:14px"><table class="t"><thead><tr><th>Cenário</th><th>Gasto/dia</th><th>Guarda/mês</th><th>% renda</th><th>Patrimônio</th><th>Do bolso</th><th>Rendimento</th><th>Meses de vida</th></tr></thead><tbody>${sc.map(s => `<tr><td><b>${s.k}</b> <span class="muted">${s.d}</span></td><td>${fmt(s.g)}${s.cortes ? ' + cortes ' + fmt(s.cortes) : ''}</td><td>${fmt(s.guarda)}</td><td>${pc(s.pctRenda)}</td><td><b>${fmt(s.fim)}</b></td><td>${fmt(s.bolso)}</td><td>${fmt(s.rend)}</td><td>${nf(s.mesesVida, 1)}</td></tr>`).join('')}</tbody></table></div>`;
+  h += `<div class="calc-out"><div class="k">No cenário MÉDIO, em ${prazo} meses</div><div class="big num">${esc(fmt(sc[0].fim))}</div><p>Guardando ${esc(fmt(sc[0].guarda))} por mês. Desse total, ${esc(fmt(sc[0].rend))} vêm só do rendimento. Isso pagaria ${nf(sc[0].mesesVida, 1)} meses de vida se a renda parasse.</p><p>Guarda/mês = renda média ${esc(fmt(M.rendaMedia))} − fixas ${esc(fmt(M.fixTotal))} − cartão ${esc(fmt(M.recTotal))} − gasto livre × ${nf(M.diasMes, 1)} − contas anuais ${esc(fmt(sc[0].anuaisMedia))} (média) + cortes.</p><p>Supõe que os próximos anos repetem o plano: mesma renda e contas, sem aumento nem inflação.</p></div>`;
+  return h;
+}
+PAGES['calc-juros'] = () => calcPage('juros', 'Juros compostos', cin('jpv', 'Já tenho', '0,00') + cin('jpmt', 'Guardo por mês', '3.000,00') + cin('jr', 'Rendimento % a.m.', nf(C().rendimento)) + cin('jn', 'Meses', 24, {money:false, int:true}), calcJurosOut());
+function calcJurosOut(){
+  const pv = cnum('jpv', 0), pmt = cnum('jpmt', 3000), r = cnum('jr', C().rendimento) / 100, n = Math.max(1, Math.min(600, Math.round(cnum('jn', 24))));
+  const fv = FV(pv, pmt, r, n), bolso = pv + pmt * n;
+  const serie = [], bs = []; for (let k = 0; k <= n; k++) { serie.push(FV(pv, pmt, r, k)); bs.push(pv + pmt * k); }
+  return `<div class="calc-out"><div class="k">Depois de ${n} meses você terá</div><div class="big num">${esc(fmt(fv))}</div><p>Saiu do seu bolso: ${esc(fmt(bolso))}. O rendimento criou: <b>${esc(fmt(fv - bolso))}</b>. Taxa equivalente ao ano: ${pc(Math.pow(1 + r, 12) - 1, 2)}.</p></div><div class="chart-card" style="margin-top:14px"><h4>O dinheiro crescendo</h4>${chart({type:'line', labels:serie.map((_, i) => 'mês ' + i), series:[{name:'Com rendimento', color:'--s1', values:serie, area:true, endDot:true}, {name:'Só o que saiu do bolso', color:'--axis', values:bs, dash:true}], h:190, labW:50})}</div>`;
+}
+PAGES['calc-meta'] = () => calcPage('meta', 'Meta', cin('mfv', 'Quero chegar em', '50.000,00') + cin('mpv', 'Já tenho', '0,00') + cin('mr', 'Rendimento % a.m.', nf(C().rendimento)) + cin('mn', 'Em quantos meses', 24, {money:false, int:true}), calcMetaOut());
+function calcMetaOut(){
+  const fv = cnum('mfv', 50000), pv = cnum('mpv', 0), r = cnum('mr', C().rendimento) / 100, n = Math.max(1, Math.round(cnum('mn', 24)));
+  const pmt = PMTmeta(fv, pv, r, n);
+  const M = compute({pure:true}); const guarda = projPatrimonio(M, M.g, 0, 1, r).guarda;
+  let nMeses = null; if (guarda > 0) { let p = pv; for (let k = 1; k <= 600; k++) { p = p * (1 + r) + guarda; if (p >= fv) { nMeses = k; break; } } }
+  return `<div class="calc-out"><div class="k">Você precisa guardar por mês</div><div class="big num">${esc(fmt(Math.max(0, pmt)))}</div><p>${pmt <= 0 ? 'O que você já tem, rendendo, chega lá sozinho.' : `Do bolso: ${esc(fmt(pv + pmt * n))}; o rendimento põe ${esc(fmt(fv - pv - pmt * n))}.`}</p><p>No ritmo do seu plano (${esc(fmt(guarda))}/mês em média), você chega lá ${nMeses ? 'em <b>' + nMeses + ' meses</b> (' + esc(ymLabel(ymAdd(M.start, nMeses))) + ')' : 'só aumentando o que guarda'}.</p></div>`;
+}
+PAGES['calc-parcelar'] = () => {
+  const es = list('extras').filter(e => e.tipo !== 'entrada');
+  if (!es.length) return navbar('Parcelar um extra', 'Mais') + `<section><div class="note">Cadastre um gasto extra (Mais → Extras planejados) para comparar formas de parcelar.</div></section>`;
+  const eid = cget('xe', es[0].id); const e = es.find(x => x.id === eid) || es[0];
+  const inputs = sel('xe', 'Extra', e.id, es.map(x => [x.id, x.nome + ' (' + fmt0(+x.total) + ')'])) + cin('xp', 'Parcelas (teste)', cget('xp', e.parcelas), {money:false, int:true}) + fld('xm', '1ª parcela em', cget('xm', e.mesInicio), {type:'month'});
+  return calcPage('parcelar', 'Parcelar um extra', inputs, calcParcelarOut());
+};
+function calcParcelarOut(){
+  const es = list('extras').filter(e => e.tipo !== 'entrada'); if (!es.length) return '';
+  const e = es.find(x => x.id === cget('xe', es[0].id)) || es[0];
+  const M = compute({pure:true});
+  const m0 = e.mesInicio || M.start;
+  const tp = Math.max(1, Math.round(cnum('xp', e.parcelas))), tm = cget('xm', m0) || m0;
+  const ops = [['Tudo de uma vez em ' + ymLabel(m0), 1, m0], ['Tudo de uma vez em ' + ymLabel(ymAdd(m0, 2)), 1, ymAdd(m0, 2)], ['2x a partir de ' + ymLabel(m0), 2, m0], ['2x a partir de ' + ymLabel(ymAdd(m0, 1)), 2, ymAdd(m0, 1)], ['3x a partir de ' + ymLabel(m0), 3, m0], ['4x', 4, m0], ['6x', 6, m0], ['10x', 10, m0], ['12x', 12, m0]];
+  const res = ops.map(o => Object.assign({nome:o[0], n:o[1], m:o[2]}, simExtra(e.id, o[1], o[2])));
+  const t = simExtra(e.id, tp, tm);
+  const atual = simExtra(e.id, e.parcelas, e.mesInicio);
+  let h = `<div class="calc-out"><div class="k">${tp}x de ${esc(fmt((+e.total || 0) / tp))} a partir de ${esc(ymLabel(tm))}</div><div class="big num ${t.min < 0 ? 'neg' : 'pos'}">${t.min < 0 ? 'Não cabe' : 'Cabe'}</div><p>Menor saldo nas caixinhas: <b>${esc(fmt(t.min))}</b> em ${esc(ymLabel(t.minYm))}. ${t.min < 0 ? 'Faltaria dinheiro: teria que usar o colchão da conta ou o limite do banco.' : t.min < 300 ? 'Cabe, mas apertado.' : 'Sobra folga.'}</p>${(tp !== +e.parcelas || tm !== e.mesInicio) ? `<div class="btns" style="margin-top:10px"><button class="btn tint" data-act="usarParcelamento:${esc(e.id)}:${tp}:${tm}">Usar esta opção no plano</button></div>` : '<p>Esta é a opção que está no plano.</p>'}</div>`;
+  h += `<div class="chart-card" style="margin-top:14px"><h4>Caixinhas no fim de cada mês</h4><div class="cs">Sem rendimento. Abaixo de zero = faltaria dinheiro</div>${chart({type:'line', labels:t.labels, series:[{name:'Opção testada', color:'--s1', values:t.serie, endDot:true}, {name:'Opção atual do plano', color:'--s2', values:atual.serie, dash:true}], h:190})}</div>`;
+  h += `<div class="tbl-wrap" style="margin-top:14px"><table class="t"><thead><tr><th>Opção</th><th>Parcela</th><th>Menor saldo</th><th>Cabe?</th><th>Última em</th></tr></thead><tbody>${res.map(o => `<tr class="${o.n === +e.parcelas && o.m === e.mesInicio ? 'cur' : ''}" data-act="testParc:${o.n}:${o.m}" style="cursor:pointer"><td>${esc(o.nome)}</td><td>${fmt((+e.total || 0) / o.n)}</td><td class="${o.min < 0 ? 'neg' : ''}">${fmt(o.min)}</td><td>${o.min < 0 ? '✗ não cabe' : o.min < 300 ? '✓ apertado' : '✓ cabe'}</td><td>${ymLabel(ymAdd(o.m, o.n - 1))}</td></tr>`).join('')}</tbody></table></div><p class="gf">Parcelas no Pix sem juros: mais parcelas não custam nada, e o dinheiro fica rendendo ~${nf(C().rendimento, 2)}% ao mês na caixinha. Se a loja der desconto para pagar em menos vezes, compensa quando o desconto for maior que ~${nf(C().rendimento, 2)}% por mês antecipado.</p>`;
+  return h;
+}
+PAGES['calc-avista'] = () => calcPage('avista', 'À vista ou parcelado?', cin('av', 'Preço à vista', '4.275,00') + cin('ap', 'Valor da parcela', '450,00') + cin('an', 'Nº de parcelas', 10, {money:false, int:true}) + cin('ar', 'Meu rendimento % a.m.', nf(C().rendimento)) + swf('aato', '1ª parcela no ato da compra', cget('aato', false)), calcAvistaOut());
+function calcAvistaOut(){
+  const av = cnum('av', 4275), p = cnum('ap', 450), n = Math.max(1, Math.round(cnum('an', 10))), r = cnum('ar', C().rendimento) / 100, ato = !!cget('aato', false);
+  const vp = ato ? p + PVann(p, r, n - 1) : PVann(p, r, n);
+  const tot = p * n, i = irParcelas(av, p, n, ato);
+  const melhor = vp < av ? 'parcelado' : 'à vista';
+  return `<div class="calc-out"><div class="k">Melhor opção</div><div class="big">${melhor === 'à vista' ? 'Pagar à vista' : 'Parcelar'}</div><p>Total parcelado: ${esc(fmt(tot))} (${n}x de ${esc(fmt(p))}). À vista: ${esc(fmt(av))} — ${av < tot ? 'desconto de ' + esc(pc(1 - av / tot)) : 'sem desconto'}.</p><p>Deixando o dinheiro rendendo ${nf(r * 100, 2)}% ao mês e pagando as parcelas, o parcelado “custa hoje” <b>${esc(fmt(vp))}</b>. ${melhor === 'à vista' ? 'Como isso é mais que o preço à vista, o desconto vale a pena.' : 'Como isso é menos que o preço à vista, parcelar sem juros e deixar o dinheiro rendendo sai mais barato.'}</p><p>Juros embutidos no parcelado: <b>${pc(i, 2)} ao mês</b> (${pc(Math.pow(1 + i, 12) - 1, 1)} ao ano). ${i > r ? 'É mais do que sua caixinha rende.' : 'É menos do que sua caixinha rende.'}</p><p>Só vale se a parcela couber no mês. Teste em “Parcelar um extra”.</p></div>`;
+}
+PAGES['calc-fatura'] = () => { const c = C(); return calcPage('fatura', 'Em qual fatura cai?', fld('fd', 'Data da compra', cget('fd', todayStr()), {type:'date'}) + sel('fk', 'Cartão', cget('fk', (c.cartoes[0] || {}).id), c.cartoes.map(k => [k.id, k.nome])), calcFaturaOut()); };
+function calcFaturaOut(){
+  const c = C(); if (!c.cartoes.length) return `<div class="note" style="margin-top:14px">Cadastre um cartão em Mais → Cartões.</div>`;
+  const k = cardById(c, cget('fk', c.cartoes[0].id)) || c.cartoes[0], d = cget('fd', todayStr()) || todayStr();
+  const q = dueOf(k, d); const prazo = dDiff(d, q.dueDate);
+  const prox = []; for (let i = 0; i < 3; i++) { const cm = ymAdd(ymOf(d), i); prox.push(ymd(cm, k.fecha)); }
+  return `<div class="calc-out"><div class="k">${esc(k.nome)} · compra em ${esc(dLabelY(d))}</div><div class="big">Fatura de ${esc(ymLong(q.dueYm))}</div><p>Fecha em ${esc(dayLong(q.closeDate))} e vence em <b>${esc(dayLong(q.dueDate))}</b>: ${prazo} dias para pagar.</p><p>Melhor dia de compra neste cartão: <b>dia ${k.fecha}</b> (o fechamento). Próximos: ${prox.filter(x => x >= d).map(dLabel).join(', ')}.</p></div>`;
+}
+PAGES['calc-rendimento'] = () => calcPage('rendimento', 'Rendimento da caixinha', cin('rcdi', 'CDI % ao ano', '13,90') + cin('rpct', '% do CDI', '100') + cin('rdias', 'Prazo médio (dias)', 90, {money:false, int:true}) + swf('risento', 'Isento de IR (LCI/LCA)', cget('risento', false)), calcRendOut());
+function calcRendOut(){
+  const cdi = cnum('rcdi', 13.9) / 100, p = cnum('rpct', 100) / 100, dias = Math.max(1, Math.round(cnum('rdias', 90))), isento = !!cget('risento', false);
+  const aa = cdi * p, am = Math.pow(1 + aa, 1 / 12) - 1, ir = isento ? 0 : aliquotaIR(dias), liq = am * (1 - ir / 100);
+  return `<div class="calc-out"><div class="k">Rendimento líquido ao mês</div><div class="big num">${pc(liq, 3)}</div><p>Bruto: ${pc(am, 3)} ao mês (${pc(aa, 2)} ao ano). IR: ${isento ? 'isento' : ir + '% sobre o rendimento (prazo de ' + dias + ' dias)'}.</p><p>Em R$ 10.000, rende cerca de <b>${esc(fmt(10000 * liq))}</b> por mês.</p><p>Caixinhas e CDBs de bancos grandes costumam pagar ~100% do CDI com liquidez diária e garantia do FGC. Poupança rende menos (0,5% a.m. + TR quando a Selic está acima de 8,5%).</p><div class="btns" style="margin-top:10px"><button class="btn tint" data-act="usarRend:${liq * 100}">Usar ${nf(liq * 100, 2)}% no plano</button></div></div>`;
+}
+PAGES['calc-reserva'] = () => { const M = compute({pure:true}); const MR = compute(); const rr = MR.rows.find(r => r.ym === viewYm(MR)); const hoje = rr ? rr.resIni : (+C().reservaInicial || 0); return calcPage('reserva', 'Reserva de emergência', cin('rvc', 'Custo de vida/mês', nf(M.custoVida)) + cin('rvm', 'Meses de reserva', M.cfg.metaMeses, {money:false, int:true}) + cin('rvt', 'Já tenho', nf(hoje)) + cin('rvg', 'Guardo por mês', nf(projPatrimonio(M, M.g, 0, 1, M.r).guarda)) + cin('rvr', 'Rendimento % a.m.', nf(M.cfg.rendimento)), calcReservaOut()); };
+function calcReservaOut(){
+  const M = compute({pure:true});
+  const cv = cnum('rvc', M.custoVida), m = cnum('rvm', M.cfg.metaMeses), t = cnum('rvt', 0), g = cnum('rvg', 0), r = cnum('rvr', M.cfg.rendimento) / 100;
+  const meta = cv * m, falta = Math.max(0, meta - t);
+  let n = null; if (t >= meta) n = 0; else if (g > 0 || r > 0) { let p = t; for (let k = 1; k <= 600; k++) { p = p * (1 + r) + g; if (p >= meta) { n = k; break; } } }
+  return `<div class="calc-out"><div class="k">Sua meta</div><div class="big num">${esc(fmt(meta))}</div><p>${m} meses × ${esc(fmt(cv))}. Falta ${esc(fmt(falta))} (${pc(meta ? Math.min(1, t / meta) : 0, 0)} pronto).</p><p>${n === 0 ? 'Meta atingida.' : n ? `Guardando ${esc(fmt(g))} por mês, você chega lá em <b>${n} meses</b> (${esc(ymLong(ymAdd(ymOf(todayStr()), n)))}).` : 'Com esses números a meta não é atingida.'}</p><p>Onde guardar: algo seguro e com resgate no mesmo dia (caixinha ou CDB com liquidez diária a 100% do CDI, Tesouro Selic). Não use renda variável para a reserva.</p></div>`;
+}
+PAGES['calc-habito'] = () => calcPage('habito', 'Custo de um hábito', cin('hv', 'Valor', '15,00') + sel('hf', 'Frequência', cget('hf', 'util'), [['dia', 'Todo dia'], ['util', 'Dias úteis (22/mês)'], ['semana', 'Uma vez por semana'], ['mes', 'Uma vez por mês']]) + cin('hr', 'Rendimento % a.m.', nf(C().rendimento)), calcHabitoOut());
+function calcHabitoOut(){
+  const v = cnum('hv', 15), f = cget('hf', 'util'), r = cnum('hr', C().rendimento) / 100;
+  const mes = v * (f === 'dia' ? 30.4 : f === 'util' ? 22 : f === 'semana' ? 4.35 : 1);
+  const gd = C().gastoDia || 1;
+  return `<div class="calc-out"><div class="k">Por mês</div><div class="big num">${esc(fmt(mes))}</div><p>Por ano: <b>${esc(fmt(mes * 12))}</b>. Isso é ${nf(mes / gd, 1)} dias do seu gasto livre por mês.</p><p>Se guardasse esse valor rendendo ${nf(r * 100, 2)}% ao mês: em 1 ano ${esc(fmt(FV(0, mes, r, 12)))}, em 2 anos ${esc(fmt(FV(0, mes, r, 24)))}, em 5 anos <b>${esc(fmt(FV(0, mes, r, 60)))}</b>.</p></div>`;
+}
+PAGES['calc-limite'] = () => calcPage('limite', 'Custo do limite da conta', cin('lv', 'Quanto ficou negativo', '500,00') + cin('ld', 'Por quantos dias', 10, {money:false, int:true}) + cin('lt', 'Juros % ao mês', '8,00'), calcLimiteOut());
+function calcLimiteOut(){
+  const v = cnum('lv', 500), d = Math.max(1, Math.round(cnum('ld', 10))), t = cnum('lt', 8) / 100;
+  const juros = v * (Math.pow(1 + t, d / 30) - 1), iof = v * 0.0038 + v * 0.000082 * Math.min(d, 365);
+  return `<div class="calc-out"><div class="k">Você pagaria cerca de</div><div class="big num neg">${esc(fmt(juros + iof))}</div><p>Juros: ${esc(fmt(juros))}. IOF: ${esc(fmt(iof))} (0,38% + 0,0082% ao dia).</p><p>Isso equivale a ${nf((juros + iof) / (C().gastoDia || 1), 1)} dias do seu gasto livre. Os juros do cheque especial são limitados a 8% ao mês por regra do Banco Central; confira a taxa do seu banco no app. Muitos bancos dão alguns dias sem juros por mês.</p></div>`;
+}
+PAGES['calc-ipva'] = () => calcPage('ipva', 'IPVA e licenciamento (SP)', cin('iv', 'Valor venal (tabela Fipe)', '60.000,00') + cin('ia', 'Alíquota %', '4,00') + cin('ifab', 'Ano de fabricação', '2018', {money:false, int:true}) + cin('iano', 'Ano do imposto', '2027', {money:false, int:true}) + fld('ip', 'Final da placa', cget('ip', C().placa.finalPlaca || ''), {int:true}) + cin('il', 'Taxa de licenciamento', '174,08'), calcIpvaOut());
+function calcIpvaOut(){
+  const v = cnum('iv', 60000), a = cnum('ia', 4) / 100, fab = Math.round(cnum('ifab', 2018)), ano = Math.round(cnum('iano', 2027)), pl = String(cget('ip', C().placa.finalPlaca || '')).trim(), lic = cnum('il', 174.08);
+  const isento = ano - fab >= 20;
+  const ipva = isento ? 0 : v * a;
+  const mp = placaMes(pl);
+  return `<div class="calc-out"><div class="k">IPVA ${ano}</div><div class="big num">${isento ? 'Isento' : esc(fmt(ipva))}</div>${isento ? `<p>Carros com 20 anos ou mais de fabricação são isentos em SP (${fab} → ${ano - fab} anos). Ainda paga o licenciamento.</p>` : `<p>À vista em janeiro com 3% de desconto: <b>${esc(fmt(ipva * 0.97))}</b>. À vista em fevereiro: ${esc(fmt(ipva))}. Ou 5x de ${esc(fmt(ipva / 5))} (jan a mai).</p><p>Para o plano, guardar ${esc(fmt(ipva * 0.97 / 12))} por mês no Pote Anuais cobre o pagamento à vista.</p>`}</div><div class="calc-out"><div class="k">Licenciamento ${ano}</div><div class="big num">${esc(fmt(lic))}</div><p>${mp ? `Final ${esc(pl.slice(-1))}: vence em <b>${MESL[mp - 1]}</b>.` : 'Informe o final da placa para ver o mês.'} Calendário SP: finais 1-2 julho, 3-4 agosto, 5-6 setembro, 7-8 outubro, 9 novembro, 0 dezembro.</p>${pl !== '' && pl !== String(C().placa.finalPlaca) ? `<div class="btns" style="margin-top:10px"><button class="btn tint" data-act="salvarPlaca:${esc(pl.slice(-1))}">Salvar final ${esc(pl.slice(-1))} nas premissas</button></div>` : ''}</div><p class="gf">Valores de ${ano} saem entre novembro e dezembro do ano anterior. Confira o valor venal no site da Sefaz-SP pela placa.</p>`;
+}
+const CALC_OUT = {patrimonio:calcPatrimonioOut, juros:calcJurosOut, meta:calcMetaOut, parcelar:calcParcelarOut, avista:calcAvistaOut, fatura:calcFaturaOut, rendimento:calcRendOut, reserva:calcReservaOut, habito:calcHabitoOut, limite:calcLimiteOut, ipva:calcIpvaOut};
+function onCalcInput(ev){
+  const box = ev.target.closest('#calc-in'); if (!box) return;
+  const t = ev.target; UI.calc[t.id] = t.type === 'checkbox' ? t.checked : t.value;
+  const k = box.dataset.calc;
+  if (k === 'parcelar' && t.id === 'xe') { const e = S.data.extras[t.value]; if (e) { UI.calc.xp = e.parcelas; UI.calc.xm = e.mesInicio; } render(); return; }
+  clearTimeout(onCalcInput._t);
+  onCalcInput._t = setTimeout(() => { CH = {}; chartSeq = 0; const out = $('#calc-out'); if (out) { out.innerHTML = CALC_OUT[k](); drawCharts(); } }, 180);
+}
+
+/* ===================== fechamento e ajustes ===================== */
+function sheetFechar(ym){
+  const M = compute(), row = M.rows.find(r => r.ym === ym), md = row.md || {};
+  const plan = row.poteDep + row.resDep;
+  openSheet('Fechar ' + ymLabel(ym), `<div class="note" style="margin-top:8px">Planejado: mandar <b>${esc(fmt(plan))}</b> (Pote ${esc(fmt(row.poteDep))} + Reserva ${esc(fmt(row.resDep))}).</div><div class="fg">${fld('fm-t', 'Quanto mandei', isSet(md.transferido) ? moneyIn(md.transferido) : '', {money:true, ph:nf(plan)})}</div><h3 class="gh" style="margin-top:18px">Saldos reais no fim do mês</h3><div class="fg" style="margin-top:0">${fld('fm-p', 'Pote Anuais', isSet(md.poteReal) ? moneyIn(md.poteReal) : '', {money:true, ph:nf(row.poteFim)})}${fld('fm-r', 'Reserva', isSet(md.reservaReal) ? moneyIn(md.reservaReal) : '', {money:true, ph:nf(row.resFim)})}${fld('fm-c', 'Conta corrente', '', {money:true, ph:'opcional'})}</div><p class="fh">Deixe vazio o que não souber. Os saldos reais das caixinhas substituem a previsão, e os meses seguintes partem deles. O saldo da conta corrige o calendário a partir do último dia do mês.</p>`, {saveLabel:'Fechar', onSave: () => {
+    putMes(ym, m => {
+      const t = mval('fm-t'), p = mval('fm-p'), r = mval('fm-r');
+      if (t != null) m.transferido = t; else delete m.transferido;
+      if (p != null) m.poteReal = p; else delete m.poteReal;
+      if (r != null) m.reservaReal = r; else delete m.reservaReal;
+      m.fechado = true;
+    });
+    const cc = mval('fm-c'); if (cc != null) saveCfg({ajuste:{data:ymd(ym, 31), valor:cc}});
+    toast('Mês fechado');
+  }});
+}
+function sheetAjuste(){
+  const c = C(), a = c.ajuste || {};
+  openSheet('Saldo real da conta', `<div class="amount"><span>R$</span><input id="aj-v" class="num" inputmode="decimal" value="${esc(isSet(a.valor) ? moneyIn(a.valor) : '')}" placeholder="0,00" autofocus aria-label="Saldo"></div><div class="fg">${fld('aj-d', 'Data', a.data || todayStr(), {type:'date'})}</div><p class="fh">O saldo que o app do banco mostra no fim do dia. O calendário passa a partir dele. Use valor negativo se estiver no limite (ex.: -120).</p>${a.data ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="limparAjuste">Remover saldo informado</button></div>` : ''}`, {onSave: () => { const v = mval('aj-v'); if (v == null || !val('aj-d')) { toast('Digite o saldo e a data.'); return false; } saveCfg({ajuste:{data:val('aj-d'), valor:v}}); toast('Calendário corrigido'); }});
+}
+function sheetFatura(ym, cid){
+  const M = compute(), f = M.fat.find(x => x.ym === ym), k = cardById(M.cfg, cid), p = f.por[cid];
+  const md = S.data.meses[ym] || {}; const cur = (md.faturas && md.faturas[cid]) || {};
+  openSheet('Fatura ' + k.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="ft-v" class="num" inputmode="decimal" placeholder="${esc(nf(p.prev))}" value="${esc(isSet(cur.valor) ? moneyIn(cur.valor) : '')}" aria-label="Valor real"></div><p class="fh" style="text-align:center">Previsto: ${esc(fmt(p.prev))}. Deixe vazio para usar o previsto.</p><div class="fg">${swf('ft-p', 'Já paguei', !!cur.pago)}</div><h3 class="gh" style="margin-top:18px">O que o app já sabe desta fatura</h3><div class="group">${p.items.map(it => `<div class="row"><span class="grow"><div class="t">${esc(it.desc)}</div><div class="d">${it.data ? esc(dLabel(it.data)) + ' · ' : ''}${it.tipo === 'recorrente' ? 'recorrente' : it.tipo === 'diario' ? 'Diário' : 'antes do plano'}</div></span><span class="v num">${esc(fmt(it.valor))}</span></div>`).join('') || '<div class="empty">Nada previsto.</div>'}</div><p class="fh">Vence ${esc(dayLong(p.dueDate))}. Se o valor real for maior, veja se alguma compra ficou sem lançar no Diário.</p>`, {onSave: () => {
+    const raw = val('ft-v').trim(), v = raw ? mval('ft-v') : null; if (raw && v == null) { toast('Valor inválido.'); return false; }
+    putMes(ym, m => { m.faturas = m.faturas || {}; const o = {pago:chk('ft-p')}; if (v != null) o.valor = v; m.faturas[cid] = o; }); toast('Salvo');
+  }});
+}
+function sheetFixaMes(ym, id){
+  const f = S.data.fixas[id]; if (!f) return;
+  const md = S.data.meses[ym] || {}; const cur = md.fixasValor && isSet(md.fixasValor[id]) ? md.fixasValor[id] : '';
+  openSheet(f.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="fm-v" class="num" inputmode="decimal" placeholder="${esc(nf(+f.valor))}" value="${esc(isSet(cur) ? moneyIn(cur) : '')}" autofocus aria-label="Valor real"></div><p class="fh" style="text-align:center">Valor padrão: ${esc(fmt(+f.valor))}. Deixe vazio para usar o padrão.</p><div class="fg">${swf('fm-p', 'Já paguei', !!(md.fixasPagas && md.fixasPagas[id]))}</div>${f.obs ? `<p class="fh">${esc(f.obs)}</p>` : ''}<div class="btns" style="margin-top:18px"><button class="btn tint" data-act="editFixa:${esc(id)}">Editar a conta (todos os meses)</button></div>`, {onSave: () => {
+    const raw = val('fm-v').trim(), v = raw ? mval('fm-v') : null; if (raw && v == null) { toast('Valor inválido.'); return false; }
+    putMes(ym, m => { m.fixasValor = m.fixasValor || {}; m.fixasPagas = m.fixasPagas || {}; if (v != null) m.fixasValor[id] = v; else delete m.fixasValor[id]; if (chk('fm-p')) m.fixasPagas[id] = true; else delete m.fixasPagas[id]; }); toast('Salvo');
+  }});
+}
+
+/* ===================== tutorial (onboarding) ===================== */
+const ONB = [
+  {c:'--s1', i:ICON.wallet, t:'Seu plano de 12 meses, no bolso', p:['Tudo o que estava na planilha e no Notion está aqui: recebimentos, contas fixas, cartões, contas anuais e as caixinhas.', 'Quando você muda um número, o app refaz as contas sozinho.']},
+  {c:'--s3', i:ICON.pen, t:'1 minuto por dia', p:['A cada 1–3 dias, toque em Lançar gasto e anote só o gasto livre: comer fora, lazer, farmácia, roupas.', 'O número grande da tela Hoje diz quanto você ainda pode gastar por dia até o fim do mês.']},
+  {c:'--s2', i:ICON.cal, t:'Marque o que foi pago', p:['Na tela Hoje aparecem os próximos vencimentos e recebimentos. Toque no círculo quando pagar ou receber.', 'Na aba Mês, digite o valor real de cada recebimento e fatura quando souber.']},
+  {c:'--s1', i:ICON.piggy, t:'No último dia do mês', p:['Mande a sobra para as caixinhas: primeiro o Pote Anuais (IPVA, licenciamento, anuidades), depois a Reserva de emergência.', 'Toque em Fechar o mês e digite os saldos reais. O plano segue a partir deles.']},
+  {c:'--s3', i:ICON.chart, t:'Veja o futuro e simule', p:['Na aba Plano: gráficos dos 12 meses, faturas previstas, o saldo dia a dia e cenários.', 'Em Mais: 11 calculadoras, as premissas, o glossário e o passo a passo completo.']}
+];
+let onbI = 0;
+function showOnb(){ onbI = 0; renderOnb(); $('#onb').hidden = false; }
+function renderOnb(){
+  const s = ONB[onbI], last = onbI === ONB.length - 1;
+  $('#onb').innerHTML = `<div class="onb" role="dialog" aria-modal="true" aria-label="Tutorial"><button class="skip" data-act="onbEnd">${last ? '' : 'Pular'}</button><div class="pg"><div class="art" style="background:var(${s.c})">${s.i}</div><h2>${esc(s.t)}</h2>${s.p.map(p => `<p>${esc(p)}</p>`).join('')}</div><div class="foot"><div class="dots">${ONB.map((_, i) => `<i class="${i === onbI ? 'on' : ''}"></i>`).join('')}</div><div class="btns">${last ? `<button class="btn" data-act="onbEnd">Começar</button><button class="btn tint" data-act="onbGuide">Ver o passo a passo completo</button>` : `<button class="btn" data-act="onbNext">Continuar</button>`}</div></div></div>`;
+}
+function maybeOnboard(){ if (hasCfg() && !C().tutorialVisto && $('#onb').hidden) showOnb(); }
+function endOnb(){ $('#onb').hidden = true; if (hasCfg() && !C().tutorialVisto) saveCfg({tutorialVisto:true}); }
+
+/* ===================== ações ===================== */
+const ACT = {
+  pop, closeSheet,
+  sheetSave: () => { if (!sheetSave) return; const r = sheetSave(); if (r !== false) closeSheet(); },
+  tab: t => go(t),
+  goSub: p => { if (UI.tab !== 'mais') { UI.tab = 'mais'; UI.sub = []; } closeSheet(); push(p); },
+  goMes: ym => { UI.ym = ym; go('mes'); },
+  goDiario: ym => { UI.dym = ym; go('diario'); },
+  goPlano: s => { UI.pseg = s; go('plano'); },
+  pseg: s => { UI.pseg = s; render(); },
+  dym: ym => { if (ym) { UI.dym = ym; render(); } },
+  mym: ym => { if (ym) { UI.ym = ym; render(); } },
+  cym: ym => { if (ym) { UI.cym = ym; render(); } },
+  novoGasto: () => sheetGasto(null),
+  editGasto: id => sheetGasto(id),
+  delGasto: id => { closeSheet(); del('diario', id); toast('Gasto apagado'); },
+  togReceb: id => { const o = clone(S.data.receb[id] || {}); o.recebido = !o.recebido; put('receb', id, o); },
+  editReceb: id => sheetReceb(id),
+  editReceb2: k => editReceb2(k),
+  togFixa: a => { const [ym, id] = a.split(':'); putMes(ym, m => { m.fixasPagas = m.fixasPagas || {}; if (m.fixasPagas[id]) delete m.fixasPagas[id]; else m.fixasPagas[id] = true; }); },
+  togFatura: a => { const [ym, id] = a.split(':'); putMes(ym, m => { m.faturas = m.faturas || {}; const f = m.faturas[id] || {}; f.pago = !f.pago; m.faturas[id] = f; }); },
+  togExtra: a => { const [id, i] = a.split(':'); const e = clone(S.data.extras[id]); if (!e) return; e.pagos = e.pagos || {}; if (e.pagos[i]) delete e.pagos[i]; else e.pagos[i] = true; put('extras', id, e); },
+  togAnual: id => { const a = clone(S.data.anuais[id]); a.pago = !a.pago; put('anuais', id, a); },
+  togPend: id => { const p = clone(S.data.pend[id]); p.feito = !p.feito; put('pend', id, p); },
+  togReal: (_, el) => { saveCfg({usarReal: !!el.checked}); },
+  editFatura: a => { const [ym, id] = a.split(':'); sheetFatura(ym, id); },
+  editFixaMes: a => { const [ym, id] = a.split(':'); sheetFixaMes(ym, id); },
+  fecharMes: ym => sheetFechar(ym),
+  ajusteSaldo: () => sheetAjuste(),
+  limparAjuste: () => { closeSheet(); saveCfg({ajuste:null}); toast('Saldo informado removido'); },
+  editCfg: k => editCfg(k),
+  editFixa: id => { closeSheet(); setTimeout(() => sheetFixa(id || null), id ? 340 : 0); },
+  editRec: id => sheetRec(id || null),
+  editCartao: i => sheetCartao(i),
+  delCartao: i => { const c = C(); const k = c.cartoes[+i]; if (list('recorrentes').some(r => r.cartao === k.id) || list('diario').some(d => d.pag === k.id)) { toast('Este cartão tem lançamentos. Pause as cobranças antes.'); return; } const cs = clone(c.cartoes); cs.splice(+i, 1); closeSheet(); saveCfg({cartoes:cs}); toast('Cartão apagado'); },
+  editAnual: id => sheetAnual(id || null),
+  novoExtra: a => { const [t, ym] = a.split(':'); sheetExtra(null, t || 'saida', ym || null); },
+  editExtra: id => sheetExtra(id),
+  editCat: i => sheetCat(i),
+  delCat: i => { const cs = clone(C().categorias); cs.splice(+i, 1); closeSheet(); saveCfg({categorias:cs}); toast('Categoria apagada'); },
+  editPend: id => sheetPend(id || null),
+  delDoc: a => { const [c, id] = a.split(':'); closeSheet(); del(c, id); toast('Apagado'); },
+  onboard: () => showOnb(),
+  onbNext: () => { onbI = Math.min(ONB.length - 1, onbI + 1); renderOnb(); },
+  onbEnd: () => endOnb(),
+  onbGuide: () => { endOnb(); UI.tab = 'mais'; UI.sub = ['comousar']; render(); window.scrollTo(0, 0); },
+  usarParcelamento: a => { const [id, n, m] = a.split(':'); const e = clone(S.data.extras[id]); e.parcelas = +n; e.mesInicio = m; e.valores = null; e.pagos = {}; put('extras', id, e); UI.calc.xp = +n; UI.calc.xm = m; toast('Plano atualizado: ' + n + 'x a partir de ' + ymLabel(m)); },
+  testParc: a => { const [n, m] = a.split(':'); UI.calc.xp = +n; UI.calc.xm = m; render(); },
+  usarRend: v => { saveCfg({rendimento: Math.round(+v * 1000) / 1000}); toast('Rendimento atualizado no plano'); },
+  salvarPlaca: p => { const c = C(); saveCfg({placa:Object.assign({}, c.placa, {finalPlaca:p})}); toast('Final da placa salvo'); },
+  exportar: async () => {
+    const txt = backupJson(), name = 'backup-plano-financeiro-' + todayStr() + '.json';
+    let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) {}
+    if (dl) { try { await dl.save({filename:name, data:txt}); toast('Backup pronto'); return; } catch (e) { if (e && e.code === 'cancelled') return; } }
+    ACT.copiarBackup();
+  },
+  copiarBackup: async () => { const txt = backupJson(); try { await navigator.clipboard.writeText(txt); toast('Backup copiado'); } catch (e) { const t = $('#bk-txt'); if (t) { t.value = txt; t.select(); toast('Selecionado: copie o texto'); } } },
+  importar: async () => {
+    const f = $('#bk-file'), t = $('#bk-txt');
+    let txt = t ? t.value.trim() : '';
+    if (f && f.files && f.files[0]) txt = await f.files[0].text();
+    if (!txt) { toast('Escolha um arquivo ou cole o texto.'); return; }
+    openSheet('Restaurar backup', `<div class="note" style="margin-top:8px">Os dados atuais serão substituídos pelos do backup. Isso não pode ser desfeito.</div><div class="btns" style="margin-top:14px"><button class="btn danger" data-act="confirmRestore">Substituir tudo</button></div>`);
+    ACT._restoreTxt = txt;
+  },
+  confirmRestore: () => { closeSheet(); restore(ACT._restoreTxt || ''); },
+  apagarTudo: () => openSheet('Apagar o Diário', `<div class="note" style="margin-top:8px">Todos os ${list('diario').length} lançamentos do Diário serão apagados. Faça um backup antes.</div><div class="btns" style="margin-top:14px"><button class="btn danger" data-act="confirmApagar">Apagar lançamentos</button></div>`),
+  confirmApagar: async () => { closeSheet(); for (const id of Object.keys(S.data.diario)) await del('diario', id); toast('Diário apagado'); }
+};
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  if (t.tagName === 'INPUT' && t.type === 'checkbox') return;
+  const s = t.dataset.act, i = s.indexOf(':');
+  const a = i < 0 ? s : s.slice(0, i), arg = i < 0 ? '' : s.slice(i + 1);
+  if (ACT[a]) { e.preventDefault(); ACT[a](arg, t, e); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('input[type=checkbox][data-act]')) { const s = t.dataset.act, i = s.indexOf(':'); const a = i < 0 ? s : s.slice(0, i); if (ACT[a]) ACT[a](i < 0 ? '' : s.slice(i + 1), t, e); return; }
+  onCalcInput(e);
+});
+document.addEventListener('input', e => { if (e.target.closest('#calc-in') && e.target.type !== 'checkbox' && e.target.tagName !== 'SELECT') onCalcInput(e); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (!$('#sheet').hidden) closeSheet(); else if (!$('#onb').hidden) endOnb(); }
+  if (e.key === 'Enter' && !$('#sheet').hidden && e.target.tagName === 'INPUT') { e.preventDefault(); ACT.sheetSave(); }
+});
+
+/* ===================== render ===================== */
+const TABS = [['hoje', 'Hoje', ICON.home], ['diario', 'Diário', ICON.pen], ['mes', 'Mês', ICON.cal], ['plano', 'Plano', ICON.chart], ['mais', 'Mais', ICON.more]];
+function renderTabs(){ $('#tabbar').innerHTML = `<nav>${TABS.map(t => `<button data-act="tab:${t[0]}" class="${UI.tab === t[0] ? 'on' : ''}" aria-current="${UI.tab === t[0] ? 'page' : 'false'}">${t[2]}<span>${t[1]}</span></button>`).join('')}</nav>`; }
+function render(){
+  renderTabs();
+  const app = $('#app');
+  if (!S.ready) { app.innerHTML = '<div class="loading">Carregando seus dados…</div>'; return; }
+  CH = {}; chartSeq = 0;
+  let h = '';
+  try {
+    h = UI.tab === 'hoje' ? viewHoje() : UI.tab === 'diario' ? viewDiario() : UI.tab === 'mes' ? viewMes() : UI.tab === 'plano' ? viewPlano() : viewMais();
+  } catch (e) { console.error(e); h = header('Ops') + `<section><div class="note">Algo deu errado ao montar esta tela: ${esc(e.message)}. Confira as Premissas ou restaure um backup.</div><div class="btns" style="margin-top:10px"><button class="btn tint" data-act="goSub:premissas">Abrir Premissas</button></div></section>`; }
+  const y = window.scrollY;
+  const active = document.activeElement && document.activeElement.id && app.contains(document.activeElement) ? document.activeElement.id : null;
+  app.innerHTML = h;
+  drawCharts();
+  window.scrollTo(0, y);
+  if (active) { const el = document.getElementById(active); if (el) el.focus(); }
+}
+let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(drawCharts, 150); });
+render();
+initStore();
+</script>
