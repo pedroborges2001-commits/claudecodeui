@@ -4,11 +4,19 @@ App de finanças pessoais em um único arquivo (`index.html`), no estilo iOS, pa
 
 ## O que faz
 
+- **Assistente (topo da tela Hoje)**: escreva ou fale pelo ditado do teclado (“gastei 32 no almoço no Nubank e 18 de Uber ontem”) e o app lança cada item, com data, categoria e cartão. Também entende contas fixas pagas, faturas, recebimentos, compras parceladas e dinheiro guardado na caixinha. Depois recalcula tudo e avisa quanto ainda dá para gastar hoje e até o fim do mês, com opção de desfazer.
+- **Extrato do mês**: aceita PDF (inclusive com senha), CSV, OFX, print da tela ou texto colado. Classifica cada movimentação (gasto, conta fixa, recorrente, fatura, recebimento, caixinha, estorno, tarifa), marca o que parece repetido, lança o que você aprovar e gera uma análise: categorias, onde mais gastou, tarifas, assinaturas, delivery, Pix no crédito, parcelas e uma leitura de especialista feita pela IA.
+- **Posso comprar?** e **Perguntar**: simulam o impacto de uma compra no mês e respondem perguntas sobre o plano.
+
 - **Hoje**: quanto ainda dá para gastar por dia no mês, próximos vencimentos e recebimentos (com marcação de pago/recebido), alertas de saldo negativo e o gráfico do gasto livre acumulado.
 - **Diário**: lançamento rápido do gasto livre, com categoria e forma de pagamento. Para compras no cartão, mostra em qual fatura a compra cai.
 - **Mês**: recebimentos, contas fixas, faturas, extras e contas anuais do mês, com valores reais e o fechamento (sobra para o Pote Anuais e para a Reserva).
 - **Plano**: caixinhas ao longo do plano, sobra e entradas × saídas por mês, tabela linha a linha, faturas previstas × teto, calendário do saldo dia a dia e cenários de gasto diário.
 - **Mais**: 11 calculadoras (patrimônio em 2 anos, juros compostos, meta, parcelamento de um extra, à vista × parcelado, em qual fatura cai, rendimento da caixinha, reserva de emergência, custo de um hábito, custo do limite, IPVA/licenciamento), além de premissas editáveis, tutorial, glossário, pendências e backup.
+
+## IA e leitor automático
+
+Dentro do claude.ai, o app usa a IA do artifact (capacidade `sample`) para entender a fala, ler extratos e prints e escrever análises. Sem a IA, ou se ela falhar, entra um leitor automático em português que funciona offline: números falados, datas (“ontem”, “sexta”, “dia 5”), cartões, categorias por palavras-chave, parser de CSV, OFX e linhas de extrato, e o pdf.js (carregado do cdnjs, com o jsDelivr como segunda fonte). A página não tem acesso ao microfone; para falar, usa-se o ditado do próprio teclado.
 
 ## Como os dados são guardados
 
