@@ -64,6 +64,8 @@ button.row:active,.row.tap:active{background:var(--fill)}
 .row .t{font-size:17px;overflow-wrap:anywhere}
 .row .d{font-size:13px;color:var(--label2);margin-top:1px;overflow-wrap:anywhere}
 .row .v{font-size:17px;text-align:right;white-space:nowrap}
+.row.sub{padding-left:34px;min-height:40px}
+.row.sub .t,.row.sub .v{font-size:15px;color:var(--label2)}
 .row .vd{font-size:13px;color:var(--label2);text-align:right;white-space:nowrap}
 .chev{color:var(--label3);flex:none;width:8px;height:14px}
 .ico{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:17px;flex:none;background:var(--fill)}
@@ -638,7 +640,9 @@ function compute(opts){
   const anuais = list('anuais').map(a => Object.assign({}, a, {mesCalc: anualMes(cfg, a)})).sort((a, b) => String(a.mesCalc).localeCompare(String(b.mesCalc)));
   let extras = list('extras');
   if (opts.extraOverride) extras = extras.map(e => e.id === opts.extraOverride.id ? Object.assign({}, e, opts.extraOverride, {valores:null}) : e);
-  const diario = pure ? [] : expandDiario(list('diario')).filter(d => d.data && d.data >= ymd(start, 1) && d.data <= ymd(end, 31));
+  const ini = ymd(start, 1);
+  const diarioTodo = pure ? [] : expandDiario(list('diario'));
+  const diario = diarioTodo.filter(d => d.data && d.data >= ini && d.data <= ymd(end, 31));
   const r = (+cfg.rendimento || 0) / 100;
   const baseYm = tYm < start ? start : tYm > end ? end : tYm;
   const fixTotal = sum(fixas.filter(f => ativoEm(f, baseYm)), f => f.valor);
@@ -650,7 +654,13 @@ function compute(opts){
   const rendaMedia = sum(recPlan, x => x.valor) / months.length;
   const teto = (+cfg.tetoPct || 0) / 100 * rendaMedia;
   const anuaisPlano = anuais.filter(a => a.mesCalc >= start && a.mesCalc <= end);
-  const antigoTotal = sum(cfg.cartoes, k => k.antigo);
+  // compras no cartão antes do plano: as feitas depois da conferência da fatura (antigoAte) ainda não estão no valor informado
+  const noPlano = (k, data) => dueOf(k, data).dueYm >= start;
+  const preCartao = diarioTodo.filter(d => d.data && d.data < ini && cardById(cfg, d.pag));
+  const preDepois = preCartao.filter(d => { const k = cardById(cfg, d.pag); return !!k.antigoAte && d.data > k.antigoAte && noPlano(k, d.data); });
+  const preRec = [];
+  cfg.cartoes.forEach(k => { if (!k.antigoAte || k.antigoAte >= ini) return; for (let ym = ymOf(k.antigoAte); ym < start; ym = ymAdd(ym, 1)) recs.forEach(rc => { if (rc.cartao !== k.id || !ativoEm(rc, ym)) return; const data = ymd(ym, rc.dia); if (data > k.antigoAte && data < ini && noPlano(k, data)) preRec.push({k, rc, data, valor:+rc.valor || 0}); }); });
+  const antigoTotal = sum(cfg.cartoes, k => k.antigo) + sum(preDepois, d => d.valor) + sum(preRec, x => x.valor);
   const extrasParc = extras.map(e => ({e, ps: extraParcelas(e, rec)}));
   let poteIni = +cfg.poteInicial || 0, resIni = +cfg.reservaInicial || 0;
   const rows = [];
@@ -666,10 +676,15 @@ function compute(opts){
     const livreReal = sum(dM.filter(x => !x.extra), x => x.valor);
     const imprev = sum(dM.filter(x => x.extra), x => x.valor);
     const gm = gOf(ym), dias = daysIn(ym), orc = gm * dias;
-    let livre = orc, livreModo = 'plano';
+    let livre = orc, livreModo = 'plano', taxa = gm;
     if (useReal) {
-      if (ym < tYm) { livre = livreReal; livreModo = 'real'; }
-      else if (ym === tYm) { livre = livreReal + gm * (dias - (+today.slice(8))); livreModo = 'parcial'; }
+      if (ym < tYm) { livre = livreReal; livreModo = 'real'; taxa = 0; }
+      else if (ym === tYm) {
+        // o resto do mês segue o que o app manda gastar por dia, sem passar da regra
+        const hd = +today.slice(8);
+        taxa = Math.min(gm, Math.max(0, orc - livreReal) / (dias - hd + 1));
+        livre = livreReal + taxa * (dias - hd); livreModo = 'parcial';
+      }
     }
     const fixV = f => {
       if (md.fixasValor && isSet(md.fixasValor[f.id])) return +md.fixasValor[f.id];
@@ -693,15 +708,28 @@ function compute(opts){
     if (poteFim < 0) { falta = -poteFim; poteFim = 0; }
     const resRend = resIni * r, resDep = sobra - poteDep;
     let resFim = resIni + resRend + resDep - falta;
+    // falta maior do que o que há nas caixinhas: a diferença sai do saldo da conta, não de um resgate
+    let daConta = 0;
+    if (resFim < -0.004) { daConta = -resFim; resFim = 0; }
     let real = false;
     if (!pure && isSet(md.poteReal)) { poteFim = +md.poteReal; real = true; }
     if (!pure && isSet(md.reservaReal)) { resFim = +md.reservaReal; real = true; }
-    rows.push({ym, i, dias, gm, fixasM, recsM, recM, entReceb, entExtra, entradas, fixM, fixV, recTotal: recMes, antigas, orc, livre, livreReal, livreModo, imprev, saiExtra, extM, dM, saidas, colchao, sobra,
-      anuaisMes, anuaisResta, poteIni, poteRend, poteDep, falta, poteFim, resIni, resRend, resDep, resFim, total: poteFim + resFim, pctMeta: meta ? resFim / meta : 0, md, real});
+    rows.push({ym, i, dias, gm, taxa, fixasM, recsM, recM, entReceb, entExtra, entradas, fixM, fixV, recTotal: recMes, antigas, orc, livre, livreReal, livreModo, imprev, saiExtra, extM, dM, saidas, colchao, sobra,
+      anuaisMes, anuaisResta, poteIni, poteRend, poteDep, falta, poteFim, resIni, resRend, resDep, daConta, resFim, total: poteFim + resFim, pctMeta: meta ? resFim / meta : 0, md, real});
     poteIni = poteFim; resIni = resFim;
   });
+  // gasto livre ainda previsto para o dia d (o que já foi lançado no Diário não entra)
+  const diaTot = {}; diario.forEach(d => { diaTot[d.data] = (diaTot[d.data] || 0) + (+d.valor || 0); });
+  const taxaYm = {}; rows.forEach(x => { taxaYm[x.ym] = x.taxa; });
+  const prevDia = d => {
+    const ym = ymOf(d); if (!(ym in taxaYm)) return 0;
+    if (!useReal) return taxaYm[ym];
+    if (d < today) return 0;
+    return d === today ? Math.max(0, taxaYm[ym] - (diaTot[d] || 0)) : taxaYm[ym];
+  };
+  const livreCard = cardById(cfg, cfg.livrePag) || null;
   const model = {cfg, g, pure, useReal, months, start, end, today, tYm, rec, recPlan, fixas, recs, anuais, anuaisPlano, extras, extrasParc, diario, rows, r,
-    fixTotal, recTotal, custoVida, meta, rendaMedia, teto, antigoTotal, diasMes, gOf};
+    fixTotal, recTotal, custoVida, meta, rendaMedia, teto, antigoTotal, diasMes, gOf, preCartao, preDepois, preRec, prevDia, livreCard};
   model.fat = faturas(model);
   return model;
 }
@@ -709,9 +737,27 @@ function faturas(M){
   const {cfg, months, recs, diario} = M;
   const map = {};
   const add = (cid, ym, v, item) => { const k = cid + '|' + ym; (map[k] = map[k] || {prev:0, items:[]}); map[k].prev += v; map[k].items.push(Object.assign({valor:v}, item)); };
-  cfg.cartoes.forEach(k => { if (+k.antigo) add(k.id, months[0], +k.antigo, {desc:'Fatura já fechada e compras antes do plano', tipo:'antigo'}); });
+  const ini = ymd(months[0], 1);
+  cfg.cartoes.forEach(k => {
+    if (+k.antigo) {
+      // o que já está dentro do valor informado: compras do Diário e cobranças recorrentes feitas antes do plano
+      const dentro = data => !(k.antigoAte && data > k.antigoAte) && dueOf(k, data).dueYm === months[0];
+      const inclui = M.preCartao.filter(d => d.pag === k.id && dentro(d.data)).map(d => ({data:d.data, desc:d.desc || catById(cfg, d.cat).nome, valor:+d.valor || 0, tipo:'diario'}));
+      [ymAdd(months[0], -2), ymAdd(months[0], -1)].forEach(ym => recs.forEach(rc => { if (rc.cartao !== k.id || !ativoEm(rc, ym)) return; const data = ymd(ym, rc.dia); if (data < ini && dentro(data)) inclui.push({data, desc:rc.nome, valor:+rc.valor || 0, tipo:'recorrente'}); }));
+      inclui.sort((a, b) => a.data.localeCompare(b.data));
+      add(k.id, months[0], +k.antigo, {desc: k.antigoAte ? 'Fatura atual, conferida em ' + dLabel(k.antigoAte) : 'Fatura já fechada e compras antes do plano', tipo:'antigo', inclui});
+    }
+    M.preDepois.filter(d => d.pag === k.id).forEach(d => add(k.id, dueOf(k, d.data).dueYm, +d.valor || 0, {desc:d.desc || catById(cfg, d.cat).nome, data:d.data, tipo:'diario'}));
+    M.preRec.filter(x => x.k.id === k.id).forEach(x => add(k.id, dueOf(k, x.data).dueYm, x.valor, {desc:x.rc.nome, data:x.data, tipo:'recorrente'}));
+  });
   months.forEach(ym => { const md = (!M.pure && S.data.meses[ym]) || {}; recs.forEach(rc => { if (!ativoEm(rc, ym)) return; const k = cardById(cfg, rc.cartao); if (!k) return; const data = ymd(ym, rc.dia); add(k.id, dueOf(k, data).dueYm, recValorMes(md, rc), {desc:rc.nome, data, tipo:'recorrente'}); }); });
   diario.forEach(d => { const k = cardById(cfg, d.pag); if (!k) return; add(k.id, dueOf(k, d.data).dueYm, +d.valor || 0, {desc:d.desc || catById(cfg, d.cat).nome, data:d.data, tipo:'diario'}); });
+  if (M.livreCard) {
+    // gasto livre previsto no cartão: entra na fatura de cada dia, agrupado por mês de compra
+    const k = M.livreCard, agg = {};
+    months.forEach(ym => { for (let dd = 1, n = daysIn(ym); dd <= n; dd++) { const d = ymd(ym, dd), v = M.prevDia(d); if (!(v > 0.004)) continue; const due = dueOf(k, d).dueYm, key = due + '|' + ym; const a = agg[key] = agg[key] || {due, v:0, de:d, ate:d}; a.v += v; a.ate = d; } });
+    Object.values(agg).forEach(a => add(k.id, a.due, Math.round(a.v * 100) / 100, {desc:'Gasto livre previsto', data:a.de, ate:a.ate, tipo:'previsto'}));
+  }
   return months.map(ym => {
     const row = M.rows.find(x => x.ym === ym);
     const md = (!M.pure && S.data.meses[ym]) || {};
@@ -747,25 +793,21 @@ function calendario(M){
     if (fr) cfg.cartoes.forEach(k => { const p = fr.por[k.id]; if (p && p.valor) add(p.dueDate, {desc:'Fatura ' + k.nome, valor:-p.valor, kind:'fatura', id:k.id, ym, done:p.pago}); });
     row.extM.forEach(p => add(p.data, {desc:p.e.nome + (p.e.parcelas > 1 ? ' (' + (p.i + 1) + '/' + p.e.parcelas + ')' : ''), valor: p.e.tipo === 'entrada' ? p.valor : -p.valor, kind:'extra', id:p.e.id, i:p.i, done:p.pago}));
     const last = ymd(ym, 31);
-    const transf = isSet(md.transferido) ? +md.transferido : (row.poteDep + row.resDep);
+    const transf = isSet(md.transferido) ? +md.transferido : (row.poteDep + row.resDep + (row.daConta || 0));
     if (Math.abs(transf) > 0.004) add(last, {desc: transf >= 0 ? 'Mandar sobra para as caixinhas' : 'Resgatar das caixinhas', valor:-transf, kind:'transfer', ym, done: isSet(md.transferido)});
   });
   const debDiario = {};
   M.diario.forEach(d => { if (!cardById(cfg, d.pag)) debDiario[d.data] = (debDiario[d.data] || 0) + (+d.valor || 0); });
-  const allDiario = {};
-  M.diario.forEach(d => { allDiario[d.data] = (allDiario[d.data] || 0) + (+d.valor || 0); });
   const aj = cfg.ajuste && cfg.ajuste.data && isSet(cfg.ajuste.valor) ? cfg.ajuste : null;
   let saldo = +cfg.saldoContaInicial || 0;
   const days = [];
   for (let d = start; d <= end; d = dAdd(d, 1)) {
     const evs = (ev[d] || []).slice();
-    let livre;
-    const gd = M.gOf(ymOf(d));
-    if (!M.useReal) livre = gd;
-    else if (d < today) livre = debDiario[d] || 0;
-    else if (d === today) livre = (debDiario[d] || 0) + Math.max(0, gd - (allDiario[d] || 0));
-    else livre = gd;
-    if (livre) evs.push({desc: d < today && M.useReal ? 'Gastos no débito (Diário)' : 'Gasto livre previsto', valor:-livre, kind:'livre'});
+    // já lançado no débito + o previsto que ainda sai da conta (no cartão ele vai para a fatura)
+    const deb = M.useReal && d <= today ? (debDiario[d] || 0) : 0;
+    const prev = M.livreCard ? 0 : M.prevDia(d);
+    const livre = deb + prev;
+    if (livre) evs.push({desc: prev > 0 ? 'Gasto livre previsto' : 'Gastos no débito (Diário)', valor:-livre, kind:'livre'});
     saldo += sum(evs, e => e.valor);
     let ajustado = false;
     if (aj && aj.data === d) { saldo = +aj.valor; ajustado = true; }
@@ -981,6 +1023,11 @@ const chk = id => { const e = document.getElementById(id); return !!(e && e.chec
 const mval = id => { const v = parseMoney(val(id)); return isNaN(v) ? null : v; };
 
 /* ===================== VIEW: Hoje ===================== */
+function sobraTexto(row){
+  if (row.sobra >= 0) return 'vai para as caixinhas no fim do mês';
+  if (!(row.daConta > 0.5)) return 'sai das caixinhas no fim do mês';
+  return row.colchao ? 'o colchão na conta cai para ' + fmt0(Math.max(0, row.colchao - row.daConta)) : 'sai do saldo da conta';
+}
 function viewHoje(){
   const M = compute(), cfg = M.cfg, today = M.today;
   const ym = viewYm(M);
@@ -1007,7 +1054,7 @@ function viewHoje(){
 
   const espacoCartao = M.teto - M.recTotal - comprasCartaoMes(M, ym);
   h += `<section><div class="tiles">`;
-  h += tile('Sobra prevista de ' + ymLabel(ym), esc(fmt0(row.sobra)), 'vai para as caixinhas no fim do mês', row.sobra < 0 ? 'neg' : '', 'goMes:' + ym);
+  h += tile('Sobra prevista de ' + ymLabel(ym), esc(fmt0(row.sobra)), esc(sobraTexto(row)), row.sobra < 0 ? 'neg' : '', 'goMes:' + ym);
   h += tile('Guardado em ' + ymLabel(M.end), esc(fmt0(last.total)), 'Pote + Reserva · ' + pc(last.pctMeta, 0) + ' da meta', last.total < 0 ? 'neg' : '', 'goPlano:resumo');
   h += tile(today < ymd(M.start, 1) ? 'Saldo previsto em ' + dLabel(cal.days[0].d) : 'Saldo previsto na conta hoje', esc(fmt0(dToday.saldo)), minM ? 'menor do mês: ' + esc(fmt0(minM.saldo)) + ' em ' + dLabel(minM.d) : '', dToday.saldo < 0 ? 'neg' : '', 'goPlano:calendario');
   h += tile('Espaço no cartão (' + ymLabel(ym) + ')', esc(fmt0(espacoCartao)), 'teto ' + esc(fmt0(M.teto)) + ' − recorrentes − compras', espacoCartao < 0 ? 'neg' : '', 'goPlano:faturas');
@@ -1137,7 +1184,7 @@ function viewMes(){
   const fr = M.fat.find(f => f.ym === ym);
   let h = header('Mês', 'Contas, recebimentos e fechamento');
   h += `<section>${mswitch(ym, M.months, 'mym')}</section>`;
-  h += `<section><div class="tiles">${tile('Entradas', esc(fmt0(row.entradas)), row.recM.length + ' recebimento' + (row.recM.length === 1 ? '' : 's'), 'pos')}${tile('Saídas', esc(fmt0(row.saidas)), row.livreModo === 'real' ? 'com o gasto real' : row.livreModo === 'parcial' ? 'real até hoje + previsto' : 'previsto')}${tile('Sobra → caixinhas', esc(fmt0(row.sobra)), row.colchao ? 'já tirando o colchão de ' + esc(fmt0(row.colchao)) : 'Pote ' + esc(fmt0(row.poteDep)) + ' · Reserva ' + esc(fmt0(row.resDep)), row.sobra < 0 ? 'neg' : 'pos')}${tile('Guardado no fim do mês', esc(fmt0(row.total)), row.real ? 'saldo real informado' : 'previsto, com rendimento')}</div></section>`;
+  h += `<section><div class="tiles">${tile('Entradas', esc(fmt0(row.entradas)), row.recM.length + ' recebimento' + (row.recM.length === 1 ? '' : 's'), 'pos')}${tile('Saídas', esc(fmt0(row.saidas)), row.livreModo === 'real' ? 'com o gasto real' : row.livreModo === 'parcial' ? 'real até hoje + previsto' : 'previsto')}${tile('Sobra → caixinhas', esc(fmt0(row.sobra)), row.daConta > 0.5 ? esc(sobraTexto(row)) : row.colchao ? 'já tirando o colchão de ' + esc(fmt0(row.colchao)) : 'Pote ' + esc(fmt0(row.poteDep)) + ' · Reserva ' + esc(fmt0(row.resDep)), row.sobra < 0 ? 'neg' : 'pos')}${tile('Guardado no fim do mês', esc(fmt0(row.total)), row.real ? 'saldo real informado' : 'previsto, com rendimento')}</div></section>`;
 
   // entradas
   h += `<section><h3 class="gh"><span>Entradas</span><button data-act="novoExtra:entrada:${ym}">+ Entrada extra</button></h3><div class="group">`;
@@ -1178,11 +1225,18 @@ function viewMes(){
   }
 
   // fechamento
-  const transf = row.poteDep + row.resDep;
+  const daConta = row.daConta > 0.004 ? row.daConta : 0;
+  const transf = row.poteDep + row.resDep + daConta;
   h += `<section><h3 class="gh"><span>Fim do mês</span></h3><div class="note">`;
-  if (row.sobra >= 0) h += `No último dia, mande <b>${esc(fmt(transf))}</b> para as caixinhas: <b>${esc(fmt(row.poteDep))}</b> para o Pote Anuais e <b>${esc(fmt(row.resDep))}</b> para a Reserva de emergência.`;
-  else h += `Este mês fecha no vermelho: <b>${esc(fmt(-row.sobra))}</b> precisam sair da Reserva para cobrir.`;
-  if (row.falta) h += ` O Pote não cobre as contas anuais do mês: ${esc(fmt(row.falta))} saem da Reserva.`;
+  if (row.sobra >= 0 && !daConta) h += `No último dia, mande <b>${esc(fmt(transf))}</b> para as caixinhas: <b>${esc(fmt(row.poteDep))}</b> para o Pote Anuais e <b>${esc(fmt(row.resDep))}</b> para a Reserva de emergência.`;
+  else if (row.sobra >= 0) h += `No último dia, mande <b>${esc(fmt(transf))}</b> para as caixinhas. A sobra (${esc(fmt(row.sobra))}) não cobre as contas anuais do mês e as caixinhas não têm o resto: ${esc(fmt(daConta))} saem do saldo da conta.`;
+  else {
+    const dasCaixinhas = Math.max(0, -row.sobra - daConta);
+    h += `Este mês fecha no vermelho: faltam <b>${esc(fmt(-row.sobra))}</b>.`;
+    if (dasCaixinhas > 0.004) h += ` ${esc(fmt(dasCaixinhas))} saem da Reserva.`;
+    if (daConta) h += ` ${dasCaixinhas > 0.004 ? 'O resto' : 'As caixinhas não têm esse dinheiro, então ele'} sai do saldo da conta${row.colchao ? `: o colchão fica em <b>${esc(fmt(Math.max(0, row.colchao - daConta)))}</b> em vez de ${esc(fmt(row.colchao))}` : ''}.`;
+  }
+  if (row.falta && !daConta) h += ` O Pote não cobre as contas anuais do mês: ${esc(fmt(row.falta))} saem da Reserva.`;
   h += `<br><span style="display:block;margin-top:6px">Pote: ${esc(fmt(row.poteIni))} → ${esc(fmt(row.poteFim))} · Reserva: ${esc(fmt(row.resIni))} → ${esc(fmt(row.resFim))}${row.real ? ' (real)' : ''}</span></div>`;
   h += `<div class="btns" style="margin-top:10px"><button class="btn${md.fechado ? ' tint' : ''}" data-act="fecharMes:${ym}">${md.fechado ? 'Editar fechamento' : 'Fechar o mês'}</button></div></section>`;
   return h;
@@ -1218,7 +1272,7 @@ function planoResumo(M){
   h += line('Contas fixas', r => r.fixM) + line('Cartão — recorrentes', r => r.recTotal) + line('Cartão — faturas antigas', r => r.antigas) + line('Gasto livre', r => r.livre) + line('Extras e imprevistos', r => r.saiExtra + r.imprev) + line('Total de saídas', r => r.saidas, 1);
   h += line('Colchão na conta', r => r.colchao) + line('Sobra do mês', r => r.sobra, 1) + line('Contas anuais (do Pote)', r => r.anuaisMes);
   h += line('Pote — rendimento', r => r.poteRend) + line('Pote — depósito', r => r.poteDep) + line('Pote — saldo no fim', r => r.poteFim, 1);
-  h += line('Reserva — rendimento', r => r.resRend) + line('Reserva — depósito', r => r.resDep) + line('Reserva — saldo no fim', r => r.resFim, 1);
+  h += line('Reserva — rendimento', r => r.resRend) + line('Reserva — depósito', r => r.resDep) + (M.rows.some(r => r.daConta > 0.004) ? line('Falta coberta pela conta', r => r.daConta || 0) : '') + line('Reserva — saldo no fim', r => r.resFim, 1);
   h += `</tbody></table></div></section>`;
   return h;
 }
@@ -1226,7 +1280,7 @@ function planoFaturas(M){
   const cfg = M.cfg, labels = M.months.map(ymLabel);
   const cols = ['--s1', '--s2', '--s3'];
   let h = `<section><div class="tiles">${tile('Teto de cartão/mês', esc(fmt0(M.teto)), nf(cfg.tetoPct, 0) + '% da renda média')}${tile('Espaço p/ compras novas', esc(fmt0(M.teto - M.recTotal)), 'teto − recorrentes de ' + esc(fmt0(M.recTotal)))}</div></section>`;
-  h += `<section><div class="chart-card"><h4>Faturas previstas por vencimento</h4><div class="cs">Só o que já é certo, mais as compras lançadas no Diário</div>${chart({type:'bar', stacked:true, labels, series:cfg.cartoes.map((k, i) => ({name:k.nome, color:cols[i % 3], values:M.fat.map(f => f.por[k.id].valor)})), refs:[{value:M.teto, label:'Teto', color:'--axis'}], h:200, legend:true})}</div></section>`;
+  h += `<section><div class="chart-card"><h4>Faturas previstas por vencimento</h4><div class="cs">${M.livreCard ? 'O que já é certo, as compras do Diário e o gasto livre previsto no ' + esc(M.livreCard.nome) : 'Só o que já é certo, mais as compras lançadas no Diário'}</div>${chart({type:'bar', stacked:true, labels, series:cfg.cartoes.map((k, i) => ({name:k.nome, color:cols[i % 3], values:M.fat.map(f => f.por[k.id].valor)})), refs:[{value:M.teto, label:'Teto', color:'--axis'}], h:200, legend:true})}</div></section>`;
   h += `<section><div class="tbl-wrap"><table class="t"><thead><tr><th>Mês</th>${cfg.cartoes.map(k => `<th>${esc(k.nome)} (dia ${k.vence})</th>`).join('')}<th>Total</th><th>% entradas</th><th>Espaço</th></tr></thead><tbody>`;
   M.fat.forEach(f => { h += `<tr class="${f.ym === M.tYm ? 'cur' : ''}" data-act="goMes:${f.ym}" style="cursor:pointer"><td>${ymLabel(f.ym)}</td>${cfg.cartoes.map(k => { const p = f.por[k.id]; return `<td>${fmt(p.valor)}${p.real ? ' ✓' : ''}</td>`; }).join('')}<td><b>${fmt(f.total)}</b></td><td>${pc(f.pct)}</td><td class="${f.espaco < 0 ? 'neg' : ''}">${fmt(f.espaco)}</td></tr>`; });
   h += `</tbody></table></div><p class="gf">✓ = valor real da fatura digitado. ${cfg.cartoes.map(k => `${esc(k.nome)}: fecha dia ${k.fecha}, vence dia ${k.vence}`).join(' · ')}. Melhor dia de compra = dia do fechamento: a compra só é cobrada na fatura seguinte.</p></section>`;
@@ -1329,7 +1383,7 @@ PAGES.premissas = () => {
   let h = navbar('Premissas', 'Mais');
   h += `<section><div class="note">Tudo o que o plano usa para calcular. Toque numa linha para mudar; os números do app inteiro se refazem na hora.</div></section>`;
   h += `<section><h3 class="gh">Início do plano</h3><div class="group">${r('inicio', 'Primeiro mês', ymLong(c.inicio))}${r('meses', 'Duração', c.meses + ' meses')}${r('saldoContaInicial', 'Saldo na conta no dia 1º', fmt(c.saldoContaInicial))}${r('poteInicial', 'Já guardado no Pote Anuais', fmt(c.poteInicial))}${r('reservaInicial', 'Já guardado na Reserva', fmt(c.reservaInicial))}</div></section>`;
-  h += `<section><h3 class="gh">Suas regras</h3><div class="group">${r('gastoDia', 'Gasto livre por dia', fmt(c.gastoDia), 'comer fora, lazer, farmácia, roupas…')}${r('tetoPct', 'Teto de cartão', nf(c.tetoPct, 1) + '% das entradas', '= ' + fmt(M.teto) + ' por mês')}${r('metaMeses', 'Meta da reserva', c.metaMeses + ' meses de custo de vida', '= ' + fmt(M.meta))}${r('rendimento', 'Rendimento das caixinhas', nf(c.rendimento, 2) + '% ao mês', 'líquido, já sem IR')}${r('colchao', 'Colchão na conta corrente', fmt(c.colchao), 'separado 1 vez no 1º mês')}${r('limiteConta', 'Limite da conta (cheque especial)', fmt(c.limiteConta))}${r('diasMes', 'Dias num mês médio', nf(c.diasMes, 1))}</div>`;
+  h += `<section><h3 class="gh">Suas regras</h3><div class="group">${r('gastoDia', 'Gasto livre por dia', fmt(c.gastoDia), 'comer fora, lazer, farmácia, roupas…')}${r('tetoPct', 'Teto de cartão', nf(c.tetoPct, 1) + '% das entradas', '= ' + fmt(M.teto) + ' por mês')}${r('metaMeses', 'Meta da reserva', c.metaMeses + ' meses de custo de vida', '= ' + fmt(M.meta))}${r('rendimento', 'Rendimento das caixinhas', nf(c.rendimento, 2) + '% ao mês', 'líquido, já sem IR')}${r('colchao', 'Colchão na conta corrente', fmt(c.colchao), 'separado 1 vez no 1º mês')}${r('limiteConta', 'Limite da conta (cheque especial)', fmt(c.limiteConta))}${r('diasMes', 'Dias num mês médio', nf(c.diasMes, 1))}${rowNav('editLivrePag', 'Gasto livre previsto sai', M.livreCard ? 'na fatura do cartão (calendário e faturas)' : 'da conta, no dia (calendário)', esc(M.livreCard ? M.livreCard.nome : 'Débito/Pix'))}</div>`;
   h += `<div class="group" style="margin-top:14px"><div class="row"><span class="grow"><div class="t">Usar gastos reais nas projeções</div><div class="d">meses passados usam o Diário; desligado = só o orçamento</div></span><label class="sw" aria-label="Usar gastos reais nas projeções"><input type="checkbox" id="p-real" data-act="togReal"${c.usarReal !== false ? ' checked' : ''}><span></span></label></div></div></section>`;
   h += `<section><h3 class="gh">Calculadora de 2 anos (cenários)</h3><div class="group">${r('cenPouco', 'POUCO: gasto livre por dia', fmt(+c.cenarios.pouco.gasto))}${r('cenPoucoC', 'POUCO: cortes extras por mês', fmt(+c.cenarios.pouco.cortes || 0))}${r('cenMuito', 'MUITO: gasto livre por dia', fmt(+c.cenarios.muito.gasto))}${r('cenMuitoC', 'MUITO: cortes extras por mês', fmt(+c.cenarios.muito.cortes || 0))}${r('cenPrazo', 'Prazo', (c.cenarios.prazo || 24) + ' meses')}</div><p class="gf">O cenário MÉDIO usa o seu gasto livre por dia.</p></section>`;
   h += `<section><h3 class="gh">Mais valores do plano</h3><div class="group">${rowNav('goSub:recebimentos', 'Salário e recebimentos', 'valor padrão, datas e cada pagamento', null, '📥')}${rowNav('goSub:fixas', 'Contas fixas', 'valores, dias, início e fim', null, '🏠')}${rowNav('goSub:recorrentes', 'Cobranças no cartão', 'valores, dias, início e fim', null, '🔁')}${rowNav('goSub:cartoes', 'Cartões', 'fechamento, vencimento, fatura anterior', null, '💳')}${rowNav('goSub:anuais', 'Contas anuais', 'valores e meses', null, '🗓️')}${rowNav('goSub:extras', 'Extras planejados', 'parcelas e valores', null, '💍')}</div><p class="gf">Valores de um mês só (luz de outubro, gasto livre de dezembro, uma assinatura mais cara) são editados na aba Mês, tocando no item.</p></section>`;
@@ -1353,6 +1407,10 @@ const CFG_FIELDS = {
   cenPrazo:{label:'Prazo (meses)', int:true, cen:['prazo']},
   finalPlaca:{label:'Final da placa', int:true, hint:'Licenciamento SP: finais 1-2 julho, 3-4 agosto, 5-6 setembro, 7-8 outubro, 9 novembro, 0 dezembro.'}
 };
+function editLivrePag(){
+  const c = C();
+  openSheet('Gasto livre previsto', `<div class="fg">${sel('lp-v', 'Sai por onde', cardById(c, c.livrePag) ? c.livrePag : '', [['', 'Débito/Pix, no dia']].concat(c.cartoes.map(k => [k.id, 'Cartão ' + k.nome + ', na fatura'])))}</div><p class="fh">Só muda a previsão dos dias que ainda não aconteceram. No cartão, o gasto previsto entra na fatura de cada dia e sai da conta no vencimento; no débito, sai da conta no próprio dia. O que você lança no Diário sempre segue a forma de pagamento lançada.</p>`, {onSave: () => { saveCfg({livrePag: val('lp-v') || ''}); toast('Salvo'); }});
+}
 function editCfg(k){
   const f = CFG_FIELDS[k], c = C();
   const cur = k === 'finalPlaca' ? c.placa.finalPlaca : f.cen ? (f.cen.length === 1 ? c.cenarios[f.cen[0]] : (c.cenarios[f.cen[0]] || {})[f.cen[1]]) : c[k];
@@ -1452,14 +1510,17 @@ function sheetRec(id){
 }
 PAGES.cartoes = () => {
   const c = C();
-  return listPage('Cartões', 'cartoes', c.cartoes.map((k, i) => rowNav('editCartao:' + i, esc(k.nome), 'fecha dia ' + k.fecha + ' · vence dia ' + k.vence + (k.antigo ? ' · fatura anterior ao plano ' + esc(fmt(+k.antigo)) : ''), '')).join(''), 'editCartao:', 'O dia de fechamento decide em qual fatura cada compra cai. Compra no dia do fechamento ou depois vai para a fatura seguinte.');
+  return listPage('Cartões', 'cartoes', c.cartoes.map((k, i) => rowNav('editCartao:' + i, esc(k.nome), 'fecha dia ' + k.fecha + ' · vence dia ' + k.vence + (k.antigo ? ' · fatura anterior ao plano ' + esc(fmt(+k.antigo)) + (k.antigoAte ? ' (conferida em ' + esc(dLabel(k.antigoAte)) + ')' : '') : ''), '')).join(''), 'editCartao:', 'O dia de fechamento decide em qual fatura cada compra cai. Compra no dia do fechamento ou depois vai para a fatura seguinte.');
 };
 function sheetCartao(i){
   const c = C(), isNew = i === '' || i == null; const k = isNew ? {id:'', nome:'', fecha:1, vence:10, antigo:0} : clone(c.cartoes[+i]);
-  openSheet(isNew ? 'Novo cartão' : k.nome, `<div class="fg">${fld('ct-n', 'Nome', k.nome, {af:isNew})}${fld('ct-f', 'Dia do fechamento', k.fecha, {int:true})}${fld('ct-v', 'Dia do vencimento', k.vence, {int:true})}</div><div class="fg">${fld('ct-a', 'Já devido no 1º mês', moneyIn(k.antigo), {money:true})}</div><p class="fh">Valor das compras feitas antes do plano que vencem no primeiro mês (fatura já fechada + compras recorrentes do mês anterior).</p>${!isNew ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delCartao:${i}">Apagar cartão</button></div>` : ''}`, {onSave: () => {
+  openSheet(isNew ? 'Novo cartão' : k.nome, `<div class="fg">${fld('ct-n', 'Nome', k.nome, {af:isNew})}${fld('ct-f', 'Dia do fechamento', k.fecha, {int:true})}${fld('ct-v', 'Dia do vencimento', k.vence, {int:true})}</div><div class="fg">${fld('ct-a', 'Já devido no 1º mês', moneyIn(k.antigo), {money:true})}${fld('ct-d', 'Valor conferido em', k.antigoAte || '', {type:'date'})}</div><p class="fh">Valor das compras feitas antes do plano que vencem no primeiro mês (fatura já fechada + compras recorrentes do mês anterior). Com a data da conferência, compras neste cartão lançadas depois dela e antes do plano entram por cima; deixe a data vazia se o valor já inclui tudo.</p>${!isNew ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="delCartao:${i}">Apagar cartão</button></div>` : ''}`, {onSave: () => {
     const nm = val('ct-n').trim(), f = parseInt(val('ct-f'), 10), v = parseInt(val('ct-v'), 10), a = mval('ct-a') || 0;
     if (!nm || !(f >= 1 && f <= 31) || !(v >= 1 && v <= 31)) { toast('Preencha nome e dias de 1 a 31.'); return false; }
-    const cs = clone(c.cartoes); const nk = Object.assign(k, {nome:nm, fecha:f, vence:v, antigo:a}); if (!nk.id) nk.id = nm.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') || uid();
+    let d = val('ct-d').trim(); if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast('Data inválida.'); return false; }
+    // valor novo sem mexer na data: conferido hoje (se o plano ainda não começou)
+    if (a !== (+k.antigo || 0) && d === (k.antigoAte || '') && todayStr() < ymd(c.inicio, 1)) d = todayStr();
+    const cs = clone(c.cartoes); const nk = Object.assign(k, {nome:nm, fecha:f, vence:v, antigo:a}); if (d) nk.antigoAte = d; else delete nk.antigoAte; if (!nk.id) nk.id = nm.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') || uid();
     if (isNew) { if (cs.some(x => x.id === nk.id)) nk.id += uid().slice(-3); cs.push(nk); } else cs[+i] = nk;
     saveCfg({cartoes:cs}); toast('Salvo');
   }});
@@ -1714,8 +1775,11 @@ function onCalcInput(ev){
 /* ===================== fechamento e ajustes ===================== */
 function sheetFechar(ym){
   const M = compute(), row = M.rows.find(r => r.ym === ym), md = row.md || {};
-  const plan = row.poteDep + row.resDep;
-  openSheet('Fechar ' + ymLabel(ym), `<div class="note" style="margin-top:8px">Planejado: mandar <b>${esc(fmt(plan))}</b> (Pote ${esc(fmt(row.poteDep))} + Reserva ${esc(fmt(row.resDep))}).</div><div class="fg">${fld('fm-t', 'Quanto mandei', isSet(md.transferido) ? moneyIn(md.transferido) : '', {money:true, ph:nf(plan)})}</div><h3 class="gh" style="margin-top:18px">Saldos reais no fim do mês</h3><div class="fg" style="margin-top:0">${fld('fm-p', 'Pote Anuais', isSet(md.poteReal) ? moneyIn(md.poteReal) : '', {money:true, ph:nf(row.poteFim)})}${fld('fm-r', 'Reserva', isSet(md.reservaReal) ? moneyIn(md.reservaReal) : '', {money:true, ph:nf(row.resFim)})}${fld('fm-c', 'Conta corrente', '', {money:true, ph:'opcional'})}</div><p class="fh">Deixe vazio o que não souber. Os saldos reais das caixinhas substituem a previsão, e os meses seguintes partem deles. O saldo da conta corrige o calendário a partir do último dia do mês.</p>${lancList(md.caixinhaLanc, 'delCaixa:' + ym, 'Envios para as caixinhas lançados')}${md.fechado ? `<div class="btns" style="margin-top:18px"><button class="btn danger" data-act="reabrirMes:${ym}">Reabrir o mês (voltar à previsão)</button></div>` : ''}`, {saveLabel:'Fechar', onSave: () => {
+  const plan = row.poteDep + row.resDep + (row.daConta || 0);
+  const planTxt = !(row.daConta > 0.004) ? `Planejado: mandar <b>${esc(fmt(plan))}</b> (Pote ${esc(fmt(row.poteDep))} + Reserva ${esc(fmt(row.resDep))}).`
+    : Math.abs(plan) < 0.005 ? `Planejado: não mandar nada. O mês fecha no vermelho e a falta de <b>${esc(fmt(row.daConta))}</b> sai do saldo da conta.`
+    : `Planejado: ${plan >= 0 ? 'mandar' : 'resgatar'} <b>${esc(fmt(Math.abs(plan)))}</b>; ${esc(fmt(row.daConta))} saem do saldo da conta.`;
+  openSheet('Fechar ' + ymLabel(ym), `<div class="note" style="margin-top:8px">${planTxt}</div><div class="fg">${fld('fm-t', 'Quanto mandei', isSet(md.transferido) ? moneyIn(md.transferido) : '', {money:true, ph:nf(plan)})}</div><h3 class="gh" style="margin-top:18px">Saldos reais no fim do mês</h3><div class="fg" style="margin-top:0">${fld('fm-p', 'Pote Anuais', isSet(md.poteReal) ? moneyIn(md.poteReal) : '', {money:true, ph:nf(row.poteFim)})}${fld('fm-r', 'Reserva', isSet(md.reservaReal) ? moneyIn(md.reservaReal) : '', {money:true, ph:nf(row.resFim)})}${fld('fm-c', 'Conta corrente', '', {money:true, ph:'opcional'})}</div><p class="fh">Deixe vazio o que não souber. Os saldos reais das caixinhas substituem a previsão, e os meses seguintes partem deles. O saldo da conta corrige o calendário a partir do último dia do mês.</p>${lancList(md.caixinhaLanc, 'delCaixa:' + ym, 'Envios para as caixinhas lançados')}${md.fechado ? `<div class="btns" style="margin-top:18px"><button class="btn danger" data-act="reabrirMes:${ym}">Reabrir o mês (voltar à previsão)</button></div>` : ''}`, {saveLabel:'Fechar', onSave: () => {
     putMes(ym, m => {
       const t = mval('fm-t'), p = mval('fm-p'), r = mval('fm-r');
       if (t != null) m.transferido = t; else delete m.transferido;
@@ -1731,10 +1795,21 @@ function sheetAjuste(){
   const c = C(), a = c.ajuste || {};
   openSheet('Saldo real da conta', `<div class="amount"><span>R$</span><input id="aj-v" class="num" inputmode="decimal" value="${esc(isSet(a.valor) ? moneyIn(a.valor) : '')}" placeholder="0,00" autofocus aria-label="Saldo"></div><div class="fg">${fld('aj-d', 'Data', a.data || todayStr(), {type:'date'})}</div><p class="fh">O saldo que o app do banco mostra no fim do dia. O calendário passa a partir dele. Use valor negativo se estiver no limite (ex.: -120).</p>${a.data ? `<div class="btns" style="margin-top:22px"><button class="btn danger" data-act="limparAjuste">Remover saldo informado</button></div>` : ''}`, {onSave: () => { const v = mval('aj-v'); if (v == null || !val('aj-d')) { toast('Digite o saldo e a data.'); return false; } saveCfg({ajuste:{data:val('aj-d'), valor:v}}); toast('Calendário corrigido'); }});
 }
+function faturaItem(it){
+  const tipo = it.tipo === 'recorrente' ? 'recorrente' : it.tipo === 'diario' ? 'Diário' : it.tipo === 'previsto' ? 'previsão do gasto livre' : 'valor informado em Cartões';
+  const quando = it.tipo === 'previsto' ? dLabel(it.data) + (it.ate && it.ate !== it.data ? ' a ' + dLabel(it.ate) : '') + ' · ' : it.data ? dLabel(it.data) + ' · ' : '';
+  let h = `<div class="row"><span class="grow"><div class="t">${esc(it.desc)}</div><div class="d">${esc(quando + tipo)}</div></span><span class="v num">${esc(fmt(it.valor))}</span></div>`;
+  if (it.tipo === 'antigo' && it.inclui && it.inclui.length) {
+    const resto = round2(it.valor - sum(it.inclui, x => x.valor));
+    h += it.inclui.map(x => `<div class="row sub"><span class="grow"><div class="t">${esc(x.desc)}</div><div class="d">${esc(dLabel(x.data))} · ${x.tipo === 'recorrente' ? 'recorrente' : 'Diário'} · já está no valor acima</div></span><span class="v num">${esc(fmt(x.valor))}</span></div>`).join('');
+    h += `<div class="row sub"><span class="grow"><div class="t">${resto >= 0 ? 'Outras compras e parcelas' : 'O Diário passa do valor informado'}</div><div class="d">${resto >= 0 ? 'estão na fatura, mas não foram lançadas no Diário' : 'confira o valor da fatura em Mais → Cartões'}</div></span><span class="v num">${esc(fmt(Math.abs(resto)))}</span></div>`;
+  }
+  return h;
+}
 function sheetFatura(ym, cid){
   const M = compute(), f = M.fat.find(x => x.ym === ym), k = cardById(M.cfg, cid), p = f.por[cid];
   const md = S.data.meses[ym] || {}; const cur = (md.faturas && md.faturas[cid]) || {};
-  openSheet('Fatura ' + k.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="ft-v" class="num" inputmode="decimal" placeholder="${esc(nf(p.prev))}" value="${esc(isSet(cur.valor) ? moneyIn(cur.valor) : '')}" aria-label="Valor real"></div><p class="fh" style="text-align:center">Previsto: ${esc(fmt(p.prev))}. Deixe vazio para usar o previsto.</p><div class="fg">${swf('ft-p', 'Já paguei', !!cur.pago)}</div><h3 class="gh" style="margin-top:18px">O que o app já sabe desta fatura</h3><div class="group">${p.items.map(it => `<div class="row"><span class="grow"><div class="t">${esc(it.desc)}</div><div class="d">${it.data ? esc(dLabel(it.data)) + ' · ' : ''}${it.tipo === 'recorrente' ? 'recorrente' : it.tipo === 'diario' ? 'Diário' : 'antes do plano'}</div></span><span class="v num">${esc(fmt(it.valor))}</span></div>`).join('') || '<div class="empty">Nada previsto.</div>'}</div><p class="fh">Vence ${esc(dayLong(p.dueDate))}. Se o valor real for maior, veja se alguma compra ficou sem lançar no Diário.</p>`, {onSave: () => {
+  openSheet('Fatura ' + k.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="ft-v" class="num" inputmode="decimal" placeholder="${esc(nf(p.prev))}" value="${esc(isSet(cur.valor) ? moneyIn(cur.valor) : '')}" aria-label="Valor real"></div><p class="fh" style="text-align:center">Previsto: ${esc(fmt(p.prev))}. Deixe vazio para usar o previsto.</p><div class="fg">${swf('ft-p', 'Já paguei', !!cur.pago)}</div><h3 class="gh" style="margin-top:18px">O que o app já sabe desta fatura</h3><div class="group">${p.items.map(faturaItem).join('') || '<div class="empty">Nada previsto.</div>'}</div><p class="fh">Vence ${esc(dayLong(p.dueDate))}. Se o valor real for maior, veja se alguma compra ficou sem lançar no Diário.</p>`, {onSave: () => {
     const raw = val('ft-v').trim(), v = raw ? mval('ft-v') : null; if (raw && v == null) { toast('Valor inválido.'); return false; }
     putMes(ym, m => { m.faturas = m.faturas || {}; const o = {pago:chk('ft-p')}; if (v != null) o.valor = v; m.faturas[cid] = o; }); toast('Salvo');
   }});
@@ -2095,7 +2170,9 @@ async function aplicarItens(itens, origem, onProg){
   Object.entries(recP).forEach(([id, d]) => ops.push(['receb', id, d]));
   if (itens.length > 12 && nGasto) linhas.unshift(`🧾 ${nGasto} gastos lançados no Diário · <b class="num">${esc(fmt(tGasto))}</b>`);
   await putMany(ops, onProg);
-  const fora = itens.filter(it => it.data < ymd(M.start, 1) || it.data > ymd(M.end, 31)).length;
+  // compra no cartão depois da conferência da fatura ainda conta, mesmo antes do plano
+  const pelaFatura = it => { const k = ['gasto', 'tarifa', 'estorno'].includes(it.tipo) && cardById(cfg, it.pag); return !!(k && k.antigoAte && it.data > k.antigoAte && dueOf(k, it.data).dueYm >= M.start); };
+  const fora = itens.filter(it => (it.data < ymd(M.start, 1) && !pelaFatura(it)) || it.data > ymd(M.end, 31)).length;
   return {linhas, undo, n:ops.length, fora};
 }
 async function desfazer(){
@@ -2109,7 +2186,10 @@ async function desfazer(){
 function avisosHtml(M){
   const ym = viewYm(M), ls = livreStatus(M, ym), today = M.today;
   const out = [];
-  if (today < ymd(M.start, 1)) out.push(['info', `O plano começa em ${dLabelY(ymd(M.start, 1))}. Gastos antes disso ficam no Diário, mas não entram nas contas. Em ${ymLabel(ym)} você terá ${fmt(ls.orc)} de gasto livre (${fmt(M.g)}/dia).`]);
+  if (today < ymd(M.start, 1)) {
+    const conf = M.cfg.cartoes.filter(k => k.antigoAte);
+    out.push(['info', `O plano começa em ${dLabelY(ymd(M.start, 1))}. ${conf.length ? `Compras no cartão ${esc(conf.map(k => k.nome).join(' ou '))} feitas depois da conferência da fatura já entram na fatura e nas contas de ${ymLabel(M.start)}; o resto fica só no Diário.` : 'Gastos antes disso ficam no Diário, mas não entram nas contas.'} Em ${ymLabel(ym)} você terá ${fmt(ls.orc)} de gasto livre (${fmt(M.gOf(ym))}/dia).`]);
+  }
   else if (today > ymd(M.end, 31)) out.push(['info', 'O plano terminou. Atualize o primeiro mês nas Premissas para seguir calculando.']);
   else {
     if (ls.restaHoje != null) out.push(ls.restaHoje >= 0 ? ['good', `Hoje você ainda pode gastar <b>${fmt(ls.restaHoje)}</b>.`] : ['crit', `Hoje você passou <b>${fmt(-ls.restaHoje)}</b> do limite do dia.`]);
@@ -2364,7 +2444,7 @@ async function aiExtrair(text, imgs, M, contaHint){
   const p = `Você lê extratos bancários e faturas de cartão brasileiros. Hoje é ${today}. ${imgs ? 'As imagens anexas são páginas ou prints de um extrato.' : 'O texto abaixo foi copiado de um extrato.'} Extraia TODAS as movimentações.
 Responda só com JSON: {"conta":"debito","transacoes":[{"data":"AAAA-MM-DD","desc":"texto curto","valor":-32.5,"tipo":"gasto","cat":"comer","ref":""}]}
 Regras:
-- conta: "debito" se for extrato de conta corrente; o id do cartão se for fatura de cartão (ids abaixo); "desconhecido" se não souber.${contaHint ? ' A pessoa disse que é: ' + contaHint + '.' : ''}
+- conta: "debito" se for extrato de conta corrente; o id do cartão se for fatura de cartão (ids abaixo); "desconhecido" se não souber. Extrato com "Compra no débito", "Transferência enviada/recebida", "Pagamento de fatura" ou "Pagamento de boleto" é da conta ("debito"), mesmo que o banco também tenha cartão (conta Nubank não é o cartão Nubank).${contaHint ? ' A pessoa disse que é: ' + contaHint + '.' : ''}
 - valor negativo = dinheiro saindo (compra, Pix enviado, pagamento, tarifa); positivo = entrando. Em fatura de cartão: compras negativas; pagamento da fatura e estornos positivos.
 - Ignore saldos, totais, limites, resumos e cabeçalhos. Compras parceladas: use o valor da parcela desta fatura e mantenha "2/10" na desc.
 - Se o ano não aparecer, use o mais provável perto de hoje.
@@ -2404,11 +2484,16 @@ function sheetExtrato(){
   <div class="btns" style="margin-top:12px"><button class="btn" data-act="exAnalisar" id="ex-go">Analisar extrato</button></div><div id="ex-status" class="fh" style="min-height:20px"></div>`);
 }
 function exStatus(t){ const e = $('#ex-status'); if (e) e.innerHTML = t; }
+function pareceConta(txs){
+  const n = txs.filter(t => /compra no debito|transferencia (enviada|recebida)|pagamento de boleto|aplicacao rdb|resgate rdb|valor adicionado na conta|saque/.test(nrm(t.desc))).length;
+  return n >= 2 && n >= txs.length * 0.1;
+}
 async function exAnalisar(){
   const M = compute(), cfg = M.cfg;
   const files = Array.from(($('#ex-file') || {}).files || []);
   const pasted = val('ex-txt').trim();
   let conta = val('ex-conta') || 'auto';
+  const contaEscolhida = conta;
   if (!files.length && !pasted) { toast('Escolha um arquivo ou cole o texto.'); return; }
   const go = $('#ex-go'); if (go) go.disabled = true;
   let txs = [], classificado = false, via = 'leitor automático', msgs = [], nomes = [];
@@ -2456,6 +2541,8 @@ async function exAnalisar(){
   txs = txs.filter(t => t && /^\d{4}-\d{2}-\d{2}$/.test(t.data) && isFinite(t.valor) && t.valor);
   if (!txs.length) { exStatus(`<span class="neg">${esc(msgs.join(' ') || 'Nenhuma movimentação encontrada.')}</span>`); if (go) go.disabled = false; return; }
   if (conta === 'auto') { const allD = nrm(txs.map(t => t.desc).join(' ')); conta = /pagamento recebido|pagamento de fatura recebido/.test(allD) && txs.filter(t => t.valor < 0).length > txs.length * 0.7 ? (cartaoDe(allD, cfg) || (cfg.cartoes[0] || {}).id || 'debito') : 'debito'; }
+  // o nome do arquivo ou a IA disseram "cartão", mas as linhas são de extrato de conta (débito, Pix, boleto)
+  if (contaEscolhida === 'auto' && cardById(cfg, conta) && pareceConta(txs)) conta = 'debito';
   const pagConta = cardById(cfg, conta) ? conta : 'debito';
   if (!classificado && aiOn()) {
     exStatus('A IA está classificando as movimentações…');
@@ -2626,6 +2713,7 @@ const ACT = {
   ajusteSaldo: () => sheetAjuste(),
   limparAjuste: () => { closeSheet(); saveCfg({ajuste:null}); toast('Saldo informado removido'); },
   editCfg: k => editCfg(k),
+  editLivrePag: () => editLivrePag(),
   editFixa: id => { closeSheet(); setTimeout(() => sheetFixa(id || null), id ? 340 : 0); },
   editRec: id => sheetRec(id || null),
   editCartao: i => sheetCartao(i),

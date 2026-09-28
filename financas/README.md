@@ -5,7 +5,7 @@ App de finanças pessoais em um único arquivo (`index.html`), no estilo iOS, pa
 ## O que faz
 
 - **Assistente (topo da tela Hoje)**: escreva ou fale pelo ditado do teclado (“gastei 32 no almoço no Nubank e 18 de Uber ontem”) e o app lança cada item, com data, categoria e cartão. Também entende contas fixas pagas, faturas, recebimentos, compras parceladas e dinheiro guardado na caixinha. Depois recalcula tudo e avisa quanto ainda dá para gastar hoje e até o fim do mês, com opção de desfazer.
-- **Extrato do mês**: aceita PDF (inclusive com senha), CSV, OFX, print da tela ou texto colado. Classifica cada movimentação (gasto, conta fixa, recorrente, fatura, recebimento, caixinha, estorno, tarifa), marca o que parece repetido, lança o que você aprovar e gera uma análise: categorias, onde mais gastou, tarifas, assinaturas, delivery, Pix no crédito, parcelas e uma leitura de especialista feita pela IA.
+- **Extrato do mês**: aceita PDF (inclusive com senha), CSV, OFX, print da tela ou texto colado. Classifica cada movimentação (gasto, conta fixa, recorrente, fatura, recebimento, caixinha, estorno, tarifa), marca o que parece repetido, lança o que você aprovar e gera uma análise: categorias, onde mais gastou, tarifas, assinaturas, delivery, Pix no crédito, parcelas e uma leitura de especialista feita pela IA. Extrato com “compra no débito”, Pix e boletos é tratado como conta, mesmo que o banco também tenha cartão (a conta Nubank não vira cartão Nubank).
 - **Posso comprar?** e **Perguntar**: simulam o impacto de uma compra no mês e respondem perguntas sobre o plano.
 
 - **Hoje**: quanto ainda dá para gastar por dia no mês, próximos vencimentos e recebimentos (com marcação de pago/recebido), alertas de saldo negativo e o gráfico do gasto livre acumulado.
@@ -39,5 +39,9 @@ O arquivo não contém nenhum dado pessoal: os valores do plano são carregados 
 
 - Sobra do mês = entradas − (contas fixas + cobranças recorrentes no cartão + faturas antigas + gasto livre + extras) − colchão (só no 1º mês).
 - A compra no cartão conta no mês em que é feita (competência). As faturas aparecem à parte, pela data de vencimento.
+- Fatura antes do plano: em Cartões, “Já devido no 1º mês” guarda o valor da fatura atual e a data em que foi conferido. A fatura mostra quais compras do Diário e cobranças recorrentes já estão dentro desse valor e quanto falta lançar. Compras no cartão lançadas depois da conferência e antes do plano entram por cima, na fatura e nas saídas do 1º mês.
+- No mês atual, o resto do mês é previsto pelo que o app manda gastar por dia, sem passar da regra: quem gasta mais no começo (uma viagem, por exemplo) e segura depois não aparece estourando a sobra.
+- Nas Premissas, “Gasto livre previsto sai” escolhe entre débito (sai da conta no dia) e um cartão (entra na fatura e sai da conta no vencimento). Isso muda o calendário e as faturas previstas.
 - A sobra enche primeiro o Pote Anuais, só com o necessário para as contas anuais até o fim do plano, e o resto vai para a Reserva. As duas rendem a taxa mensal das premissas.
+- Sobra negativa sai primeiro das caixinhas. O que elas não cobrem sai do saldo da conta (o colchão diminui), e o calendário não inventa um resgate que não existe.
 - Os meses já passados usam o gasto real do Diário. Os saldos reais informados no fechamento substituem a previsão.
