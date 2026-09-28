@@ -9,6 +9,7 @@ App de finanças pessoais em um único arquivo (`index.html`), no estilo iOS, pa
 - **Posso comprar?** e **Perguntar**: simulam o impacto de uma compra no mês e respondem perguntas sobre o plano.
 
 - **Hoje**: quanto ainda dá para gastar por dia no mês, próximos vencimentos e recebimentos (com marcação de pago/recebido), alertas de saldo negativo e o gráfico do gasto livre acumulado.
+- **Cartões de crédito** (na tela Hoje): para cada cartão, quanto já gastou no mês, quanto ainda pode gastar para seguir o plano e a fatura atual. Tocando no cartão, abre o painel com a fatura aberta compra por compra (e a fatura fechada que ainda vai vencer), as cobranças recorrentes e o botão para lançar uma compra nele. O gasto livre do mês é um só: o cartão principal (Premissas → Gasto livre previsto sai) fica com o resto, os outros cartões podem ter uma parte fixa, e o que sai no débito ou passa da parte de outro cartão sai do principal.
 - **Diário**: lançamento rápido do gasto livre, com categoria e forma de pagamento. Para compras no cartão, mostra em qual fatura a compra cai.
 - **Mês**: recebimentos, contas fixas, faturas, extras e contas anuais do mês, com valores reais e o fechamento (sobra para o Pote Anuais e para a Reserva).
 - **Plano**: caixinhas ao longo do plano, sobra e entradas × saídas por mês, tabela linha a linha, faturas previstas × teto, calendário do saldo dia a dia e cenários de gasto diário.
@@ -25,7 +26,7 @@ O mesmo arquivo também roda como site normal. Um carregador pequeno (projeto Lo
 - Na primeira vez, a pessoa cria uma **chave pessoal** (20 caracteres) ou digita uma que já tem.
 - Cada documento é criptografado no navegador com AES-GCM de 256 bits. A chave AES é derivada da chave pessoal com PBKDF2-SHA256 (150 mil iterações), e o dono é o SHA-256 da chave. O banco guarda só texto cifrado.
 - O banco não aceita acesso direto (RLS sem políticas). O app usa apenas as funções `pf_pull`, `pf_put` e `pf_purge` (security definer), que exigem o hash de dono.
-- Há uma cópia local para funcionar offline e uma fila de envio que sobe quando a internet volta. A sincronização roda a cada 20 segundos, ao voltar para a aba e ao reconectar.
+- Há uma cópia local para funcionar offline e uma fila de envio que sobe quando a internet volta. Com a tela aberta, o app busca novidades a cada 5 segundos, e também ao voltar para a aba e ao reconectar. Painéis abertos (como o do cartão) se refazem sozinhos quando chega um lançamento de outro aparelho.
 - Em Mais → Backup e nuvem: ver a chave, trocar de chave (recriptografa tudo), sair do aparelho e sincronizar agora.
 
 ## Como os dados são guardados
