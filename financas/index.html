@@ -232,6 +232,15 @@ table.t tr.cur td:first-child{background:color-mix(in srgb,var(--card),var(--blu
 .exr{align-items:flex-start}
 .exsel{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .exsel select{font-size:13px;border:0;border-radius:8px;background:var(--fill);padding:5px 8px;max-width:100%}
+.chv{max-width:420px;margin:0 auto;padding-top:48px;text-align:center}
+.chv .art{width:84px;height:84px;border-radius:22px;display:grid;place-items:center;margin:0 auto 18px;color:#fff}
+.chv .art svg{width:46px;height:46px}
+.chv h1{font-size:30px;margin:0 0 10px}
+.chv p{color:var(--label2);font-size:16px;line-height:1.5;margin:0 0 8px}
+.chv p b{color:var(--label)}
+.chv-key{background:var(--card);border-radius:14px;padding:18px 12px;font-size:22px;font-weight:700;letter-spacing:1px;margin:14px 0;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere;text-align:center}
+.chv-msg{color:var(--warn-t)!important;margin-top:10px!important}
+.chv .btns{margin-top:12px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){.hero .big{font-size:38px}.tile .v{font-size:19px}}
 </style>
@@ -351,11 +360,13 @@ async function put(c, id, data){
   if (S.mode === 'db') {
     try { await queued(c + '/' + id, () => S.db.collection(c).doc(id).set(data)); }
     catch (e) { if (e && e.code === 'unavailable') { await new Promise(r => setTimeout(r, 600 + Math.random() * 600)); try { await S.db.collection(c).doc(id).set(data); } catch (e2) { dbErr(e2); } } else dbErr(e); }
-  } else lsSave();
+  } else if (S.mode === 'cloud') cloudQueue(c, id, data);
+  else lsSave();
 }
 async function del(c, id){
   const m = Object.assign({}, S.data[c]); delete m[id]; S.data[c] = m; scheduleRender();
   if (S.mode === 'db') { try { await queued(c + '/' + id, () => S.db.collection(c).doc(id).delete()); } catch (e) { dbErr(e); } }
+  else if (S.mode === 'cloud') cloudQueue(c, id, null);
   else lsSave();
 }
 function C(){
@@ -371,9 +382,148 @@ const hasCfg = () => !!S.data.cfg.main;
 function saveCfg(patch){ return put('cfg', 'main', Object.assign(clone(C()), patch)); }
 function putMes(ym, fn){ const m = clone(S.data.meses[ym] || {}); fn(m); return put('meses', ym, m); }
 
+/* ===================== nuvem (site próprio): dados criptografados com a chave pessoal ===================== */
+const CLOUD = {cfg:null, key:null, owner:null, aes:null, since:'1970-01-01T00:00:00Z', queue:[], syncing:false, lastOk:null, err:null, timer:null, step:'entrar', nova:null, msg:''};
+const TE = new TextEncoder(), TD = new TextDecoder();
+function b64(u8){ let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const normChave = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const fmtChave = s => normChave(s).replace(/(.{4})(?=.)/g, '$1-');
+function novaChave(){ const A = 'abcdefghjkmnpqrstuvwxyz23456789', r = crypto.getRandomValues(new Uint8Array(20)); return Array.from(r, b => A[b % A.length]).join(''); }
+async function sha256hex(s){ const h = await crypto.subtle.digest('SHA-256', TE.encode(s)); return Array.from(new Uint8Array(h), b => b.toString(16).padStart(2, '0')).join(''); }
+async function derivar(chave){
+  const k = normChave(chave);
+  const base = await crypto.subtle.importKey('raw', TE.encode(k), 'PBKDF2', false, ['deriveKey']);
+  const aes = await crypto.subtle.deriveKey({name:'PBKDF2', salt:TE.encode('pf-enc-v1'), iterations:150000, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt', 'decrypt']);
+  return {aes, owner: await sha256hex('pf-owner:' + k)};
+}
+async function enc(obj, aes){ const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, aes || CLOUD.aes, TE.encode(JSON.stringify(obj)))); const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return b64(out); }
+async function dec(p){ const u = unb64(p); return JSON.parse(TD.decode(await crypto.subtle.decrypt({name:'AES-GCM', iv:u.slice(0, 12)}, CLOUD.aes, u.slice(12)))); }
+async function rpc(name, body){
+  const r = await fetch(CLOUD.cfg.url + '/rest/v1/rpc/' + name, {method:'POST', headers:{apikey:CLOUD.cfg.key, Authorization:'Bearer ' + CLOUD.cfg.key, 'Content-Type':'application/json'}, body:JSON.stringify(body || {})});
+  if (!r.ok) { let t = ''; try { t = await r.text(); } catch (e) {} throw new Error('Nuvem: ' + r.status + ' ' + t.slice(0, 120)); }
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+const cacheKey = () => 'pf-cloud-cache-' + CLOUD.owner.slice(0, 12);
+function cloudSaveCache(){ try { localStorage.setItem(cacheKey(), JSON.stringify({data:S.data, since:CLOUD.since})); localStorage.setItem('pf-cloud-queue-' + CLOUD.owner.slice(0, 12), JSON.stringify(CLOUD.queue)); } catch (e) {} }
+function cloudLoadCache(){ try { const j = JSON.parse(localStorage.getItem(cacheKey()) || 'null'); if (j && j.data) { for (const c of COLS) S.data[c] = j.data[c] || {}; CLOUD.since = j.since || CLOUD.since; } CLOUD.queue = JSON.parse(localStorage.getItem('pf-cloud-queue-' + CLOUD.owner.slice(0, 12)) || '[]'); return !!(j && j.data); } catch (e) { return false; } }
+async function cloudPull(){
+  if (!CLOUD.owner) return 0;
+  const rows = await rpc('pf_pull', {p_owner:CLOUD.owner, p_since:CLOUD.since});
+  const pend = new Set(CLOUD.queue.map(q => q.c + '/' + q.id));
+  let n = 0;
+  for (const r of rows || []) {
+    if (r.updated_at > CLOUD.since) CLOUD.since = r.updated_at;
+    if (!COLS.includes(r.col) || pend.has(r.col + '/' + r.id)) continue;
+    const m = Object.assign({}, S.data[r.col]);
+    if (r.deleted) delete m[r.id];
+    else { try { m[r.id] = await dec(r.payload); } catch (e) { continue; } }
+    S.data[r.col] = m; n++;
+  }
+  CLOUD.lastOk = new Date(); CLOUD.err = null;
+  if (n) scheduleRender();
+  cloudSaveCache();
+  return (rows || []).length;
+}
+function cloudQueue(c, id, data){
+  CLOUD.queue = CLOUD.queue.filter((q, i) => !(q.c === c && q.id === id && !(i === 0 && CLOUD.syncing)));
+  CLOUD.queue.push({c, id, data});
+  cloudSaveCache(); cloudFlush();
+}
+async function cloudFlush(){
+  if (CLOUD.syncing || !CLOUD.owner) return;
+  CLOUD.syncing = true;
+  try {
+    while (CLOUD.queue.length) {
+      const q = CLOUD.queue[0];
+      const t = await rpc('pf_put', {p_owner:CLOUD.owner, p_col:q.c, p_id:q.id, p_payload: q.data == null ? '' : await enc(q.data), p_deleted: q.data == null});
+      CLOUD.queue.shift(); cloudSaveCache();
+      CLOUD.lastOk = new Date(); CLOUD.err = null;
+      void t;
+    }
+  } catch (e) { CLOUD.err = (navigator.onLine === false || e instanceof TypeError || /fetch|network/i.test(String(e && e.message))) ? 'Sem internet: as alterações ficam guardadas neste aparelho e sobem quando a conexão voltar.' : 'A nuvem não respondeu; vou tentar de novo em instantes. As alterações estão guardadas neste aparelho.'; scheduleRender(); setTimeout(cloudFlush, 8000); }
+  CLOUD.syncing = false;
+}
+async function cloudEntrar(chave, criar){
+  const k = normChave(chave);
+  if (k.length < 12) { CLOUD.msg = 'A chave tem pelo menos 12 letras e números.'; renderChave(); return; }
+  CLOUD.msg = 'Abrindo…'; renderChave();
+  try {
+    const d = await derivar(k);
+    CLOUD.key = k; CLOUD.aes = d.aes; CLOUD.owner = d.owner; CLOUD.since = '1970-01-01T00:00:00Z';
+    for (const c of COLS) S.data[c] = {};
+    const cached = cloudLoadCache();
+    const n = cached ? 1 : await cloudPull();
+    if (!n && !criar) { CLOUD.msg = 'Nenhum dado encontrado com esta chave. Confira se digitou certo ou comece do zero com ela.'; CLOUD.step = 'vazio'; renderChave(); return; }
+    try { localStorage.setItem('pf-chave', k); } catch (e) {}
+    cloudStart();
+  } catch (e) { CLOUD.msg = 'Não consegui falar com a nuvem. Confira a internet e tente de novo. (' + (e.message || e) + ')'; renderChave(); }
+}
+function cloudStart(){
+  S.mode = 'cloud'; S.ready = true; CLOUD.msg = '';
+  $('#tabbar').hidden = false;
+  scheduleRender(); maybeOnboard();
+  cloudPull().catch(e => { CLOUD.err = 'Sem conexão com a nuvem agora; usando a cópia deste aparelho.'; });
+  cloudFlush();
+  clearInterval(CLOUD.timer);
+  CLOUD.timer = setInterval(() => { if (!document.hidden) cloudPull().then(() => scheduleRender()).catch(() => {}); }, 20000);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.mode === 'cloud') { cloudPull().catch(() => {}); cloudFlush(); } });
+window.addEventListener('online', () => { if (S.mode === 'cloud') { cloudFlush(); cloudPull().catch(() => {}); } });
+function renderChave(){
+  $('#tabbar').hidden = true;
+  const st = CLOUD.step;
+  let h = `<div class="chv"><div class="art" style="background:var(--s1)">${ICON.wallet}</div><h1>Plano Financeiro</h1>`;
+  if (st === 'nova') {
+    h += `<p>Esta é a sua <b>chave pessoal</b>. Ela abre e criptografa os seus dados. Anote num lugar seguro (app de senhas ou Notas): sem ela, ninguém recupera os dados, nem eu.</p><div class="chv-key num" id="chv-show">${esc(fmtChave(CLOUD.nova))}</div><div class="btns"><button class="btn tint" data-act="chCopiar">Copiar a chave</button><button class="btn" data-act="chConfirmar">Já anotei, continuar</button><button class="btn tint" data-act="chVoltar">Voltar</button></div>`;
+  } else if (st === 'vazio') {
+    h += `<p>${esc(CLOUD.msg)}</p><div class="btns"><button class="btn" data-act="chZero">Começar do zero com esta chave</button><button class="btn tint" data-act="chVoltar">Digitar de novo</button></div>`;
+  } else {
+    h += `<p>Seus dados ficam guardados na nuvem, <b>criptografados</b> com a sua chave. Use a mesma chave no celular e no computador para ver tudo sincronizado.</p><div class="fg" style="text-align:left"><div class="f col"><label for="chv-in">Sua chave</label><input class="in" id="chv-in" autocomplete="current-password" autocapitalize="off" spellcheck="false" placeholder="xxxx-xxxx-xxxx-xxxx-xxxx"></div></div>${CLOUD.msg ? `<p class="chv-msg">${esc(CLOUD.msg)}</p>` : ''}<div class="btns" style="margin-top:12px"><button class="btn" data-act="chEntrar">Entrar</button><button class="btn tint" data-act="chCriar">Primeira vez? Criar minha chave</button><button class="btn tint" data-act="chLocal">Usar só neste aparelho, sem nuvem</button></div>`;
+  }
+  h += `</div>`;
+  $('#app').innerHTML = h;
+  const i = $('#chv-in'); if (i) i.focus();
+}
+async function cloudTrocarChave(){
+  const nova = novaChave(); const d = await derivar(nova);
+  const ops = [];
+  for (const c of COLS) for (const [id, v] of Object.entries(S.data[c])) ops.push({c, id, v});
+  let i = 0;
+  for (const o of ops) { await rpc('pf_put', {p_owner:d.owner, p_col:o.c, p_id:o.id, p_payload:await enc(o.v, d.aes), p_deleted:false}); i++; toast('Recriptografando… ' + i + '/' + ops.length); }
+  const velho = CLOUD.owner;
+  try { localStorage.removeItem(cacheKey()); } catch (e) {}
+  await rpc('pf_purge', {p_owner:velho});
+  CLOUD.key = normChave(nova); CLOUD.aes = d.aes; CLOUD.owner = d.owner; CLOUD.since = '1970-01-01T00:00:00Z';
+  try { localStorage.setItem('pf-chave', CLOUD.key); } catch (e) {}
+  await cloudPull(); cloudSaveCache();
+  return nova;
+}
+function cloudStatus(){
+  if (S.mode !== 'cloud') return '';
+  if (CLOUD.err) return CLOUD.err;
+  const q = CLOUD.queue.length;
+  if (q) return q + (q === 1 ? ' alteração esperando' : ' alterações esperando') + ' para subir…';
+  return CLOUD.lastOk ? 'Sincronizado às ' + CLOUD.lastOk.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) + '.' : 'Conectando…';
+}
+async function initCloud(){
+  CLOUD.cfg = window.PF_CONFIG;
+  let k = null; try { k = localStorage.getItem('pf-chave'); } catch (e) {}
+  let loc = null; try { loc = localStorage.getItem('pf-local'); } catch (e) {}
+  if (loc === '1') { S.mode = 'local'; lsLoad(); S.ready = true; scheduleRender(); maybeOnboard(); return; }
+  if (!k) { S.ready = true; S.mode = 'chave'; renderChave(); return; }
+  try {
+    const d = await derivar(k);
+    CLOUD.key = k; CLOUD.aes = d.aes; CLOUD.owner = d.owner;
+    cloudLoadCache();
+    cloudStart();
+  } catch (e) { S.mode = 'chave'; CLOUD.msg = 'Não consegui abrir a chave salva. Digite de novo.'; renderChave(); }
+}
+
 async function initStore(){
   let db = null;
   try { db = (window.claude && typeof window.claude.use === 'function') ? await window.claude.use('db') : null; } catch (e) { db = null; }
+  if (!db && window.PF_CONFIG && window.PF_CONFIG.url && window.crypto && crypto.subtle) { initCloud(); return; }
   if (!db) { S.mode = 'local'; lsLoad(); S.ready = true; scheduleRender(); maybeOnboard(); return; }
   S.db = db; S.mode = 'db';
   const pending = new Set(COLS);
@@ -841,7 +991,8 @@ function viewHoje(){
   const dToday = cal.days.find(x => x.d === today) || cal.days[0];
   const minM = cal.minPorMes[ym];
   let h = header('Hoje', dayLong(today).replace(/^./, c => c.toUpperCase()));
-  if (S.mode === 'local') h += `<div class="banner">Modo local: os dados ficam só neste navegador. Abra pelo link do claude.ai para sincronizar entre celular e computador.</div>`;
+  if (S.mode === 'local') h += `<div class="banner">${window.PF_CONFIG ? 'Modo sem nuvem: os dados ficam só neste aparelho. Para sincronizar, entre com a sua chave em Mais → Backup e nuvem.' : 'Modo local: os dados ficam só neste navegador. Abra pelo link do claude.ai para sincronizar entre celular e computador.'}</div>`;
+  if (S.mode === 'cloud' && CLOUD.err) h += `<div class="banner">${esc(CLOUD.err)}</div>`;
   if (!hasCfg()) h += `<section><div class="note"><b>Seu plano ainda não foi configurado.</b> Comece pelas Premissas (salário, contas fixas e cartões) ou restaure um backup.</div><div class="btns" style="margin-top:10px"><button class="btn" data-act="goSub:premissas">Configurar meu plano</button><button class="btn tint" data-act="goSub:backup">Restaurar backup</button></div></section>`;
   let status = '';
   if (today < ymd(M.start, 1)) { const n = dDiff(today, ymd(M.start, 1)); status = `Seu plano começa em 1º de ${MESL[+M.start.slice(5) - 1]} (${n === 1 ? 'amanhã' : 'em ' + n + ' dias'}). Até lá, os números abaixo mostram o primeiro mês.`; }
@@ -1152,8 +1303,8 @@ function viewMais(){
   h += rowNav('goSub:pendencias', 'Pendências do plano', np ? np + ' para resolver' : 'tudo resolvido', null, '✅');
   h += `</div></section>`;
   h += `<section><h3 class="gh">Dados</h3><div class="group">`;
-  h += rowNav('goSub:backup', 'Backup e restauração', S.mode === 'db' ? 'sincronizado no seu link privado' : 'modo local (só neste navegador)', null, '💾');
-  h += `</div><p class="gf">${S.mode === 'db' ? 'Seus dados ficam no banco deste link, visível só para você. Abra o mesmo link no celular e no computador.' : 'Abra pelo link do claude.ai para sincronizar entre aparelhos.'}</p></section>`;
+  h += rowNav('goSub:backup', 'Backup e nuvem', S.mode === 'db' ? 'sincronizado no seu link privado' : S.mode === 'cloud' ? esc(cloudStatus()) : 'modo local (só neste aparelho)', null, '💾');
+  h += `</div><p class="gf">${S.mode === 'db' ? 'Seus dados ficam no banco deste link, visível só para você. Abra o mesmo link no celular e no computador.' : S.mode === 'cloud' ? 'Seus dados ficam na nuvem, criptografados com a sua chave. Entre com a mesma chave em outro aparelho para ver tudo.' : window.PF_CONFIG ? 'Entre com a sua chave em Backup e nuvem para sincronizar.' : 'Abra pelo link do claude.ai para sincronizar entre aparelhos.'}</p></section>`;
   return h;
 }
 const CALCS = [
@@ -1413,7 +1564,9 @@ PAGES.glossario = () => navbar('Glossário', 'Mais') + `<section><div class="gro
 /* ---------- backup ---------- */
 PAGES.backup = () => {
   let h = navbar('Backup', 'Mais');
-  h += `<section><div class="note">${S.mode === 'db' ? 'Os dados já ficam salvos no seu link privado. Faça um backup de vez em quando para ter uma cópia fora dele.' : '<b>Modo local:</b> os dados ficam só neste navegador. Faça backup com frequência.'}</div></section>`;
+  h += `<section><div class="note">${S.mode === 'db' ? 'Os dados já ficam salvos no seu link privado. Faça um backup de vez em quando para ter uma cópia fora dele.' : S.mode === 'cloud' ? 'Os dados ficam na nuvem, criptografados com a sua chave, e também numa cópia neste aparelho para funcionar sem internet.' : '<b>Modo local:</b> os dados ficam só neste navegador. Faça backup com frequência.'}</div></section>`;
+  if (S.mode === 'cloud') h += `<section><h3 class="gh">Nuvem</h3><div class="group"><div class="row"><span class="grow"><div class="t">Status</div><div class="d">${esc(cloudStatus())}</div></span><button class="btn tint sm" data-act="nuvemSync">Sincronizar</button></div>${rowNav('nuvemChave', 'Ver minha chave', 'para entrar em outro aparelho', null, '🔑')}${rowNav('nuvemTrocar', 'Trocar de chave', 'gera uma nova e recriptografa tudo', null, '🔁')}${rowNav('nuvemSair', 'Sair deste aparelho', 'apaga a cópia local; os dados continuam na nuvem', null, '🚪')}</div></section>`;
+  else if (S.mode === 'local' && window.PF_CONFIG) h += `<section><h3 class="gh">Nuvem</h3><div class="btns"><button class="btn" data-act="nuvemEntrar">Entrar com a minha chave (sincronizar)</button></div><p class="gf">Os dados deste aparelho sobem para a nuvem ao criar uma chave nova. Com uma chave existente, os dados da nuvem são carregados.</p></section>`;
   h += `<section><h3 class="gh">Exportar</h3><div class="btns"><button class="btn" data-act="exportar">Baixar arquivo de backup</button><button class="btn tint" data-act="copiarBackup">Copiar backup (texto)</button></div></section>`;
   h += `<section><h3 class="gh">Restaurar</h3><div class="fg" style="margin-top:0"><div class="f col"><label for="bk-file">Arquivo .json</label><input type="file" id="bk-file" accept="application/json,.json" class="in"></div><div class="f col"><label for="bk-txt">ou cole o texto do backup</label><textarea class="in" id="bk-txt" rows="4" placeholder="{ … }"></textarea></div></div><div class="btns" style="margin-top:10px"><button class="btn tint" data-act="importar">Restaurar backup</button></div><p class="gf">Restaurar substitui os dados atuais pelos do backup.</p></section>`;
   h += `<section><h3 class="gh">Zona de perigo</h3><div class="btns"><button class="btn danger" data-act="apagarTudo">Apagar todos os lançamentos do Diário</button></div></section>`;
@@ -2496,6 +2649,7 @@ const ACT = {
     const txt = backupJson(), name = 'backup-plano-financeiro-' + todayStr() + '.json';
     let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) {}
     if (dl) { try { await dl.save({filename:name, data:txt}); toast('Backup pronto'); return; } catch (e) { if (e && e.code === 'cancelled') return; } }
+    if (!window.claude) { try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], {type:'application/json'})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); toast('Backup baixado'); return; } catch (e) {} }
     ACT.copiarBackup();
   },
   copiarBackup: async () => { const txt = backupJson(); try { await navigator.clipboard.writeText(txt); toast('Backup copiado'); } catch (e) { const t = $('#bk-txt'); if (t) { t.value = txt; t.select(); toast('Selecionado: copie o texto'); } } },
@@ -2509,6 +2663,21 @@ const ACT = {
   },
   confirmRestore: () => { closeSheet(); restore(ACT._restoreTxt || ''); },
   apagarTudo: () => openSheet('Apagar o Diário', `<div class="note" style="margin-top:8px">Todos os ${list('diario').length} lançamentos do Diário serão apagados. Faça um backup antes.</div><div class="btns" style="margin-top:14px"><button class="btn danger" data-act="confirmApagar">Apagar lançamentos</button></div>`),
+  chEntrar: () => cloudEntrar(val('chv-in'), false),
+  chCriar: () => { CLOUD.nova = novaChave(); CLOUD.step = 'nova'; CLOUD.msg = ''; renderChave(); },
+  chCopiar: async () => { try { await navigator.clipboard.writeText(fmtChave(CLOUD.nova)); toast('Chave copiada'); } catch (e) { const el = $('#chv-show'); if (el) { const r = document.createRange(); r.selectNodeContents(el); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); } toast('Selecionada: copie a chave'); } },
+  chConfirmar: () => { const k = CLOUD.nova; CLOUD.step = 'entrar'; const local = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) { return null; } })(); cloudEntrar(k, true).then(async () => { if (S.mode === 'cloud' && local) { for (const c of COLS) for (const [id, v] of Object.entries(local[c] || {})) if (!(id in S.data[c])) { S.data[c] = Object.assign({}, S.data[c], {[id]: v}); cloudQueue(c, id, v); } scheduleRender(); } }); },
+  chVoltar: () => { CLOUD.step = 'entrar'; CLOUD.msg = ''; renderChave(); },
+  chZero: () => { try { localStorage.setItem('pf-chave', CLOUD.key); } catch (e) {} CLOUD.step = 'entrar'; cloudStart(); },
+  chLocal: () => { try { localStorage.setItem('pf-local', '1'); } catch (e) {} S.mode = 'local'; lsLoad(); S.ready = true; $('#tabbar').hidden = false; render(); maybeOnboard(); },
+  nuvemSync: async () => { try { await cloudFlush(); await cloudPull(); toast('Sincronizado'); } catch (e) { toast('Sem conexão com a nuvem.'); } render(); },
+  nuvemChave: () => openSheet('Sua chave', `<div class="note" style="margin-top:8px">Use esta chave para entrar em outro celular ou computador. Guarde num lugar seguro e não compartilhe.</div><div class="chv-key num" id="chv-show" style="margin-top:14px">${esc(fmtChave(CLOUD.key))}</div><div class="btns"><button class="btn tint" data-act="nuvemCopiar">Copiar a chave</button></div>`),
+  nuvemCopiar: async () => { try { await navigator.clipboard.writeText(fmtChave(CLOUD.key)); toast('Chave copiada'); } catch (e) { toast('Selecione e copie a chave'); } },
+  nuvemTrocar: () => openSheet('Trocar de chave', `<div class="note" style="margin-top:8px">Vou gerar uma chave nova e recriptografar todos os dados com ela. A chave antiga deixa de funcionar, inclusive nos outros aparelhos (neles, entre de novo com a chave nova).</div><div class="btns" style="margin-top:14px"><button class="btn" data-act="nuvemTrocarOk">Gerar chave nova</button></div>`),
+  nuvemTrocarOk: async () => { closeSheet(); try { const k = await cloudTrocarChave(); openSheet('Sua nova chave', `<div class="note" style="margin-top:8px">Pronto. Anote a nova chave:</div><div class="chv-key num" id="chv-show" style="margin-top:14px">${esc(fmtChave(k))}</div><div class="btns"><button class="btn tint" data-act="nuvemCopiar">Copiar a chave</button></div>`); } catch (e) { toast('Não consegui trocar a chave. Tente de novo.'); } },
+  nuvemSair: () => openSheet('Sair deste aparelho', `<div class="note" style="margin-top:8px">A cópia deste aparelho será apagada. Os dados continuam na nuvem; para ver de novo, entre com a sua chave. ${CLOUD.queue.length ? '<b>Atenção: há alterações que ainda não subiram.</b>' : ''}</div><div class="btns" style="margin-top:14px"><button class="btn danger" data-act="nuvemSairOk">Sair</button></div>`),
+  nuvemSairOk: () => { try { localStorage.removeItem(cacheKey()); localStorage.removeItem('pf-chave'); localStorage.removeItem('pf-cloud-queue-' + CLOUD.owner.slice(0, 12)); } catch (e) {} location.reload(); },
+  nuvemEntrar: () => { try { localStorage.removeItem('pf-local'); } catch (e) {} S.mode = 'chave'; CLOUD.step = 'entrar'; CLOUD.msg = ''; renderChave(); },
   editLivreMes: ym => sheetLivreMes(ym),
   editRecMes: a => { const [ym, id] = a.split(':'); sheetRecMes(ym, id); },
   encerrar: a => { const [c, id, ym] = a.split(':'); const d = clone(S.data[c][id]); if (!d) return; const ate = ymAdd(ym, -1); if (d.desde && ate < d.desde) { closeSheet(); del(c, id); toast('Apagada (começava neste mês)'); return; } d.ate = ate; closeSheet(); put(c, id, d); toast('Encerrada: último mês ' + ymLabel(ate)); },
@@ -2551,6 +2720,7 @@ document.addEventListener('change', e => {
 document.addEventListener('input', e => { if (e.target.id === 'as-txt') { UI.draft = e.target.value; return; } if (e.target.closest('#calc-in') && e.target.type !== 'checkbox' && e.target.tagName !== 'SELECT') onCalcInput(e); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (!$('#sheet').hidden) closeSheet(); else if (!$('#onb').hidden) endOnb(); }
+  if (e.key === 'Enter' && e.target.id === 'chv-in') { e.preventDefault(); ACT.chEntrar(); return; }
   if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'as-txt') { e.preventDefault(); asLancar(); return; }
   if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'ch-in') { e.preventDefault(); chatSend(); return; }
   if (e.key === 'Enter' && !$('#sheet').hidden && e.target.tagName === 'INPUT' && e.target.type !== 'file') { e.preventDefault(); ACT.sheetSave(); }
@@ -2560,6 +2730,7 @@ document.addEventListener('keydown', e => {
 const TABS = [['hoje', 'Hoje', ICON.home], ['diario', 'Diário', ICON.pen], ['mes', 'Mês', ICON.cal], ['plano', 'Plano', ICON.chart], ['mais', 'Mais', ICON.more]];
 function renderTabs(){ $('#tabbar').innerHTML = `<nav>${TABS.map(t => `<button data-act="tab:${t[0]}" class="${UI.tab === t[0] ? 'on' : ''}" aria-current="${UI.tab === t[0] ? 'page' : 'false'}">${t[2]}<span>${t[1]}</span></button>`).join('')}</nav>`; }
 function render(){
+  if (S.mode === 'chave') return;
   renderTabs();
   const app = $('#app');
   if (!S.ready) { app.innerHTML = '<div class="loading">Carregando seus dados…</div>'; return; }

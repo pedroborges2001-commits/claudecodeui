@@ -18,6 +18,16 @@ App de finanças pessoais em um único arquivo (`index.html`), no estilo iOS, pa
 
 Dentro do claude.ai, o app usa a IA do artifact (capacidade `sample`) para entender a fala, ler extratos e prints e escrever análises. Sem a IA, ou se ela falhar, entra um leitor automático em português que funciona offline: números falados, datas (“ontem”, “sexta”, “dia 5”), cartões, categorias por palavras-chave, parser de CSV, OFX e linhas de extrato, e o pdf.js (carregado do cdnjs, com o jsDelivr como segunda fonte). A página não tem acesso ao microfone; para falar, usa-se o ditado do próprio teclado.
 
+## Site próprio com nuvem (Lovable)
+
+O mesmo arquivo também roda como site normal. Um carregador pequeno (projeto Lovable) serve `app.html` e define `window.PF_CONFIG` com a URL e a chave pública do banco (Supabase/Lovable Cloud). Com isso, o app entra no **modo nuvem**:
+
+- Na primeira vez, a pessoa cria uma **chave pessoal** (20 caracteres) ou digita uma que já tem.
+- Cada documento é criptografado no navegador com AES-GCM de 256 bits. A chave AES é derivada da chave pessoal com PBKDF2-SHA256 (150 mil iterações), e o dono é o SHA-256 da chave. O banco guarda só texto cifrado.
+- O banco não aceita acesso direto (RLS sem políticas). O app usa apenas as funções `pf_pull`, `pf_put` e `pf_purge` (security definer), que exigem o hash de dono.
+- Há uma cópia local para funcionar offline e uma fila de envio que sobe quando a internet volta. A sincronização roda a cada 20 segundos, ao voltar para a aba e ao reconectar.
+- Em Mais → Backup e nuvem: ver a chave, trocar de chave (recriptografa tudo), sair do aparelho e sincronizar agora.
+
 ## Como os dados são guardados
 
 - Publicado como artifact do claude.ai, o app usa o banco de dados do próprio artifact. As regras deixam leitura e escrita só para o dono, e os dados sincronizam entre celular e computador.
