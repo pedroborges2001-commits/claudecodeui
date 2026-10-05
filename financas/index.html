@@ -788,6 +788,14 @@ function calendario(M){
     const ym = row.ym, md = row.md || {};
     row.fixasM.forEach(f => {
       const dias = (Array.isArray(f.dias) && f.dias.length ? f.dias : [f.dia || 1]).map(Number);
+      // conta já paga (lançada): sai no dia do pagamento; o que faltar fica nos próximos dias previstos
+      const lanc = (md.fixasLanc && md.fixasLanc[f.id]) || [];
+      if (lanc.length && !(md.fixasValor && isSet(md.fixasValor[f.id]))) {
+        lanc.forEach(l => add(l.data, {desc:f.nome + ' (pago)', valor:-l.valor, kind:'fixa', id:f.id, ym, done:true}));
+        const resto = row.fixV(f) - sum(lanc, l => l.valor), ult = lanc.map(l => l.data).sort().pop();
+        if (resto > 0.004) { const prox = dias.map(dd => ymd(ym, dd)).filter(d => d > ult), alvo = prox.length ? prox : [ult]; alvo.forEach((d, i) => add(d, {desc:f.nome + (alvo.length > 1 ? ' (' + (i + 1) + '/' + alvo.length + ')' : ''), valor:-resto / alvo.length, kind:'fixa', id:f.id, ym, done:false})); }
+        return;
+      }
       const v = row.fixV(f) / dias.length;
       dias.forEach(dd => add(ymd(ym, dd), {desc:f.nome + (dias.length > 1 ? ' (' + (dias.indexOf(dd) + 1) + '/' + dias.length + ')' : ''), valor:-v, kind:'fixa', id:f.id, ym, done: fixaPaga(md, f)}));
     });
