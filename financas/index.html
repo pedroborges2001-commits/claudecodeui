@@ -815,8 +815,9 @@ function calendario(M){
     if (aj && aj.data === d) { saldo = +aj.valor; ajustado = true; }
     days.push({d, ym:ymOf(d), evs, saldo, ajustado});
   }
+  // menor saldo de cada mês: no mês atual, só de hoje em diante (o que já passou não dá mais para evitar)
   const minPorMes = {};
-  days.forEach(x => { const m = minPorMes[x.ym]; if (!m || x.saldo < m.saldo) minPorMes[x.ym] = x; });
+  days.forEach(x => { if (M.useReal && x.ym === M.tYm && x.d < today) return; const m = minPorMes[x.ym]; if (!m || x.saldo < m.saldo) minPorMes[x.ym] = x; });
   return {days, minPorMes};
 }
 
