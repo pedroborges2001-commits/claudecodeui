@@ -623,6 +623,7 @@ function expandDiario(arr){
 }
 const ativoEm = (f, ym) => f.ativa !== false && (!f.desde || ym >= f.desde) && (!f.ate || ym <= f.ate);
 const recValorMes = (md, r) => (md && md.recValor && isSet(md.recValor[r.id])) ? +md.recValor[r.id] : (+r.valor || 0);
+const recDiaMes = (md, r) => (md && md.recDia && +md.recDia[r.id] >= 1) ? +md.recDia[r.id] : r.dia;
 function fixaLancSum(md, id){ const l = md && md.fixasLanc && md.fixasLanc[id]; return l && l.length ? sum(l, x => x.valor) : null; }
 function fixaPaga(md, f){ if (md && md.fixasPagas && md.fixasPagas[f.id]) return true; const s = fixaLancSum(md, f.id); return s != null && s >= 0.95 * (+f.valor || 0); }
 function compute(opts){
@@ -751,7 +752,7 @@ function faturas(M){
     M.preDepois.filter(d => d.pag === k.id).forEach(d => add(k.id, dueOf(k, d.data).dueYm, +d.valor || 0, {desc:d.desc || catById(cfg, d.cat).nome, data:d.data, tipo:'diario'}));
     M.preRec.filter(x => x.k.id === k.id).forEach(x => add(k.id, dueOf(k, x.data).dueYm, x.valor, {desc:x.rc.nome, data:x.data, tipo:'recorrente'}));
   });
-  months.forEach(ym => { const md = (!M.pure && S.data.meses[ym]) || {}; recs.forEach(rc => { if (!ativoEm(rc, ym)) return; const k = cardById(cfg, rc.cartao); if (!k) return; const data = ymd(ym, rc.dia); add(k.id, dueOf(k, data).dueYm, recValorMes(md, rc), {desc:rc.nome, data, tipo:'recorrente'}); }); });
+  months.forEach(ym => { const md = (!M.pure && S.data.meses[ym]) || {}; recs.forEach(rc => { if (!ativoEm(rc, ym)) return; const k = cardById(cfg, rc.cartao); if (!k) return; const data = ymd(ym, recDiaMes(md, rc)); add(k.id, dueOf(k, data).dueYm, recValorMes(md, rc), {desc:rc.nome, data, tipo:'recorrente'}); }); });
   diario.forEach(d => { const k = cardById(cfg, d.pag); if (!k) return; add(k.id, dueOf(k, d.data).dueYm, +d.valor || 0, {desc:d.desc || catById(cfg, d.cat).nome, data:d.data, tipo:'diario'}); });
   if (M.livreCard) {
     // gasto livre previsto no cartão: entra na fatura de cada dia, agrupado por mês de compra
@@ -850,7 +851,7 @@ function cartoesStatus(M, ym){
     const principal = !!main && k.id === main.id;
     const gasto = livreEm(k.id), imprev = sum(dM.filter(d => d.pag === k.id && d.extra), d => d.valor);
     const recs = row ? row.recsM.filter(r => r.cartao === k.id) : [];
-    const recMes = sum(recs, r => recValorMes(row.md, r)), recCobradas = sum(recs.filter(r => ymd(ym, r.dia) <= M.today), r => recValorMes(row.md, r));
+    const recMes = sum(recs, r => recValorMes(row.md, r)), recCobradas = sum(recs.filter(r => ymd(ym, recDiaMes(row.md, r)) <= M.today), r => recValorMes(row.md, r));
     const parte = principal ? Math.max(0, ls.orc - somaFixos) : parteFixa(k);
     const usado = gasto + (principal ? gastoFora + alem : 0), resta = parte - usado;
     const pode = Math.max(0, Math.min(resta, ls.disp));
@@ -1282,7 +1283,7 @@ function viewMes(){
   // gasto livre, recorrentes, extras
   h += `<section><h3 class="gh"><span>Outras saídas do mês</span></h3><div class="group">`;
   h += `<button class="row" data-act="editLivreMes:${ym}"><span class="grow"><div class="t">Gasto livre</div><div class="d">${esc(fmt(row.gm))}/dia${isSet(md.gastoDia) ? ' (só neste mês)' : ''} · ${row.livreModo === 'real' ? 'real' : row.livreModo === 'parcial' ? 'real ' + esc(fmt(row.livreReal)) + ' + resto do mês previsto' : 'orçamento de ' + row.dias + ' dias'}</div></span><span class="v">${money(-row.livre)}</span>${ICON.chev}</button>`;
-  row.recsM.forEach(r => { const k = cardById(cfg, r.cartao); const ov = md.recValor && isSet(md.recValor[r.id]); h += `<button class="row" data-act="editRecMes:${ym}:${esc(r.id)}"><span class="grow"><div class="t">${esc(r.nome)}</div><div class="d">cobrança no ${esc(k ? k.nome : 'cartão')} · dia ${esc(r.dia)}${ov ? ' · valor só deste mês' : ''}</div></span><span class="v">${money(-recValorMes(md, r))}</span>${ICON.chev}</button>`; });
+  row.recsM.forEach(r => { const k = cardById(cfg, r.cartao); const ov = md.recValor && isSet(md.recValor[r.id]); h += `<button class="row" data-act="editRecMes:${ym}:${esc(r.id)}"><span class="grow"><div class="t">${esc(r.nome)}</div><div class="d">cobrança no ${esc(k ? k.nome : 'cartão')} · dia ${esc(recDiaMes(md, r))}${md.recDia && md.recDia[r.id] ? ' (só neste mês)' : ''}${ov ? ' · valor só deste mês' : ''}</div></span><span class="v">${money(-recValorMes(md, r))}</span>${ICON.chev}</button>`; });
   if (row.antigas) h += `<button class="row" data-act="goSub:cartoes"><span class="grow"><div class="t">Faturas antigas</div><div class="d">compras feitas antes do plano, pagas neste mês · editar em Cartões</div></span><span class="v">${money(-row.antigas)}</span>${ICON.chev}</button>`;
   if (row.imprev) h += `<button class="row" data-act="goDiario:${ym}"><span class="grow"><div class="t">Imprevistos</div><div class="d">lançados no Diário</div></span><span class="v">${money(-row.imprev)}</span>${ICON.chev}</button>`;
   row.extM.filter(p => p.e.tipo !== 'entrada').forEach(p => { h += `<div class="row">${checkBtn(p.pago, 'togExtra:' + p.e.id + ':' + p.i, 'Marcar pago')}<button class="grow" style="background:none;border:0;text-align:left;padding:0" data-act="editExtra:${esc(p.e.id)}"><div class="t">${esc(p.e.nome)}${p.e.parcelas > 1 ? ' (' + (p.i + 1) + '/' + p.e.parcelas + ')' : ''}</div><div class="d">${esc(p.e.forma || 'Pix')} · ${esc(dLabel(p.data))}</div></button><span class="v">${money(-p.valor)}</span></div>`; });
@@ -1968,9 +1969,11 @@ function lancList(l, act, titulo){
 function sheetRecMes(ym, id){
   const r = S.data.recorrentes[id]; if (!r) return;
   const md = S.data.meses[ym] || {}; const cur = md.recValor && isSet(md.recValor[id]) ? md.recValor[id] : '';
-  openSheet(r.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="rm-v" class="num" inputmode="decimal" placeholder="${esc(nf(+r.valor))}" value="${esc(isSet(cur) ? moneyIn(cur) : '')}" autofocus aria-label="Valor neste mês"></div><p class="fh" style="text-align:center">Valor padrão: ${esc(fmt(+r.valor))}. Digite outro valor só para ${esc(ymLong(ym))}; vazio usa o padrão. Use 0 se não houver cobrança neste mês.</p><div class="btns" style="margin-top:18px"><button class="btn tint" data-act="editRec:${esc(id)}">Editar a cobrança (todos os meses)</button><button class="btn tint" data-act="encerrar:recorrentes:${esc(id)}:${ym}">Cancelar a partir deste mês</button></div>`, {onSave: () => {
+  const dia = md.recDia && md.recDia[id] ? md.recDia[id] : '';
+  openSheet(r.nome + ' · ' + ymLabel(ym), `<div class="amount"><span>R$</span><input id="rm-v" class="num" inputmode="decimal" placeholder="${esc(nf(+r.valor))}" value="${esc(isSet(cur) ? moneyIn(cur) : '')}" autofocus aria-label="Valor neste mês"></div><p class="fh" style="text-align:center">Valor padrão: ${esc(fmt(+r.valor))}. Digite outro valor só para ${esc(ymLong(ym))}; vazio usa o padrão. Use 0 se não houver cobrança neste mês.</p><div class="fg">${fld('rm-d', 'Dia da cobrança neste mês', dia, {int:true, ph:String(r.dia)})}</div><p class="fh">Se neste mês a cobrança caiu (ou vai cair) em outro dia, digite o dia; vazio usa o dia ${esc(r.dia)}. O dia decide em qual fatura ela entra.</p><div class="btns" style="margin-top:18px"><button class="btn tint" data-act="editRec:${esc(id)}">Editar a cobrança (todos os meses)</button><button class="btn tint" data-act="encerrar:recorrentes:${esc(id)}:${ym}">Cancelar a partir deste mês</button></div>`, {onSave: () => {
     const raw = val('rm-v').trim(), v = raw ? mval('rm-v') : null; if (raw && v == null) { toast('Valor inválido.'); return false; }
-    putMes(ym, m => { m.recValor = m.recValor || {}; if (v != null) m.recValor[id] = v; else delete m.recValor[id]; }); toast('Salvo');
+    const dr = val('rm-d').trim(), dn = dr ? parseInt(dr, 10) : null; if (dr && !(dn >= 1 && dn <= 31)) { toast('Dia de 1 a 31.'); return false; }
+    putMes(ym, m => { m.recValor = m.recValor || {}; if (v != null) m.recValor[id] = v; else delete m.recValor[id]; m.recDia = m.recDia || {}; if (dn && dn !== +r.dia) m.recDia[id] = dn; else delete m.recDia[id]; }); toast('Salvo');
   }});
 }
 function sheetLivreMes(ym){
